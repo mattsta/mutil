@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "mutil"
+version = "0.9.4"
+description = "mutil — matt's utilities"
+authors = ["Matt Stancliff <matt@genges.com>"]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+loguru = "^0.5.3"
+websockets = "^8.1"
+aiofiles = "^0.6.0"
+ulid-py = "^1.1.0"
+setproctitle = "^1.2.1"
+python-prctl = {version = "^1.8.1", platform = "linux"}
+
+[tool.poetry.dependencies.orjson]
+# pin orjson to cpython only since it's not supported under pypy
+# (and pypy has better JIT-powered JSON anyway)
+version = "^3.4.5"
+markers = "platform_python_implementation == 'CPython'"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
