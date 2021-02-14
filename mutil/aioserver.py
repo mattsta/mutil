@@ -345,12 +345,19 @@ class PickleCxn:
                 async for chunkSize, chunk in self.readBytesStreaming():
                     totalSize += await f.write(chunk)
 
-            # move tempfile to final good filename
-            await aiofiles.os.rename(tempFile, targetPath)
+            if totalSize > 0:
+                # move tempfile to final good filename
+                await aiofiles.os.rename(tempFile, targetPath)
+            else:
+                # else, didn't create anything, so delete tempfile
+                await aiofiles.os.remove(tempFile)
 
             return totalSize
         except:
             # problem writing? remove tempfile.
+            logger.exception(
+                "Problem writing? totalSize: {} tmpFile: {}", totalSize, tempFile
+            )
             try:
                 await aiofiles.os.remove(tempFile)
             except:
