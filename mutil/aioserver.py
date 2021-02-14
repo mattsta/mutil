@@ -441,7 +441,7 @@ class PickleCxn:
     # ==========================================================================
     # Whole File Sending Operations
     # ==========================================================================
-    async def writeFromSendfile(self, filefd, totalSize=0):
+    async def writeFromSendfile(self, filefd, totalSize=0) -> int:
         """Write entire 'filefd' to current stream
 
         Can optionally provide the known file size to prevent one extra sendfile read.
@@ -462,17 +462,18 @@ class PickleCxn:
 
             # logger.info(f"OS sendfile returned: {sent}")
 
-            if sent == totalSize or sent == 0:
-                return sent
-
-            # and if we are looping again, update next start position...
+            # update total sent, which may also be the next start offset
             start += sent
+
+            if start == totalSize or sent == 0:
+                return sent
 
             # Just extra details if you're curious about where sendfile breaks
             # logger.warning(
             #    f"Didn't send complete file? Sent {start} bytes with total size: {totalSize}"
             # )
 
+        return start
         # note: failure to reach end-of-file here may have corrupted our stream;
         #       we already sent our prefix length header, so any failed
         #       send will break the reader since those bytes won't be
@@ -531,6 +532,7 @@ class PickleCxn:
 
                 # now send bytes
                 filefd = f.fileno()
+                # logger.debug("Sending from file {} with size {}", filefd, filesize)
                 await self.writeFromSendfile(filefd, filesize)
 
     # ==========================================================================
