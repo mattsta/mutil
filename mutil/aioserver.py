@@ -721,13 +721,13 @@ class Client:
         )
 
         # create passthrough methods to avoid wrapping them
-        # in helper functions.
-        self.readBytesStreaming = self.cxn.readBytesStreaming
+        # in helper functions. writers then readers.
         self.writeObj = self.cxn.writeObj
         self.tryWriteBytes = self.cxn.tryWriteBytes
         self.writeBytes = self.cxn.writeBytes
-        self.readIntoFile = self.cxn.readIntoFile
         self.writeFromFile = self.cxn.writeFromFile
+        self.readBytesStreaming = self.cxn.readBytesStreaming
+        self.readIntoFile = self.cxn.readIntoFile
 
         # client sends challenge, server replies
         # then server sends challenge, client replies
