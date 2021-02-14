@@ -339,10 +339,10 @@ class PickleCxn:
             if not os.path.isdir(dname):
                 os.makedirs(dname, exist_ok=True)
 
+            # logger.debug("Opening for temp reading... {}", tempFile)
             async with aiofiles.open(tempFile, "wb") as f:
                 # logger.info(f"Opened file...")
-                async for chunk in self.readBytesStreaming():
-                    # logger.info(f"Wrote chunk...")
+                async for chunkSize, chunk in self.readBytesStreaming():
                     totalSize += await f.write(chunk)
 
             # move tempfile to final good filename
