@@ -720,19 +720,30 @@ class Client:
             headerBytes=self.headerBytes,
         )
 
-        # create passthrough methods to avoid wrapping them
-        # in helper functions. writers then readers.
-        self.writeObj = self.cxn.writeObj
-        self.tryWriteBytes = self.cxn.tryWriteBytes
-        self.writeBytes = self.cxn.writeBytes
-        self.writeFromFile = self.cxn.writeFromFile
-        self.readBytesStreaming = self.cxn.readBytesStreaming
-        self.readIntoFile = self.cxn.readIntoFile
-
         # client sends challenge, server replies
         # then server sends challenge, client replies
         await self.cxn.challengeSend()
         await self.cxn.challengeReply()
+
+    # simple wrappers around the inner connection methods
+
+    def writeObj(self, *args):
+        return self.cxn.writeObj(*args)
+
+    def tryWriteBytes(self, *args):
+        return self.cxn.tryWriteBytes(*args)
+
+    def writeBytes(self, *args):
+        return self.cxn.writeBytes(*args)
+
+    def writeFromFile(self, *args):
+        return self.cxn.writeFromFile(*args)
+
+    def readBytesStreaming(self, *args):
+        return self.cxn.readBytesStreaming(*args)
+
+    def readIntoFile(self, *args):
+        return self.cxn.readIntoFile(*args)
 
 
 @dataclass
