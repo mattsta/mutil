@@ -192,10 +192,9 @@ class AsyncPIPE:
             totalRead += len(got)
             result.write(got)
 
-        # orjson doesn't like the memoryview from .getbuffer()
-        # restore .getbuffer() when orjson doesn't fail with " Input must be bytes, bytearray, or str:"
-        # return result.getbuffer()
-        return result.getvalue()
+        # returns a byte buffer memoryview slice object so there's no copying of
+        # the inbound data.
+        return result.getbuffer()
 
     def read(self, size):
         """Basic read interface. Client must loop to retrieve all bytes if

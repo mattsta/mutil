@@ -17,7 +17,7 @@ python-prctl = {version = "^1.8.1", platform = "linux"}
 [tool.poetry.dependencies.orjson]
 # pin orjson to cpython only since it's not supported under pypy
 # (and pypy has better JIT-powered JSON anyway)
-version = "^3.4.5"
+version = "^3.5.2"
 markers = "platform_python_implementation == 'CPython'"
 
 [tool.poetry.dev-dependencies]
