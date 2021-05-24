@@ -518,6 +518,7 @@ class PickleCxn:
         # Pattern from:
         # https://github.com/Tinche/aiofiles/blob/7031341b6bd8f2eacd0818dd8223dd9dc1bada7e/tests/test_os.py#L85
         # filesize could also be os.path.getsize() as sync if FS isn't a blocking problem
+        assert isinstance(prefix, bytes)
         filesize: int = (await aiofiles.os.stat(filepath)).st_size
         filesizeWithPrefixHeader = filesize + len(prefix)
 
@@ -736,8 +737,8 @@ class Client:
     def writeBytes(self, *args):
         return self.cxn.writeBytes(*args)
 
-    def writeFromFile(self, *args):
-        return self.cxn.writeFromFile(*args)
+    def writeFromFile(self, *args, **kwargs):
+        return self.cxn.writeFromFile(*args, **kwargs)
 
     def readBytesStreaming(self, *args):
         return self.cxn.readBytesStreaming(*args)
