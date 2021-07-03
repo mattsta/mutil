@@ -37,7 +37,7 @@ class ForeverLoop:
         self.allRunners[asyncio.create_task(t())] = (t, meta)
 
     def metaForTask(self, task):
-        """ Retrieve metadata so, most likely, caller can re-create task. """
+        """Retrieve metadata so, most likely, caller can re-create task."""
         t, meta = self.allRunners[task]
         return meta
 

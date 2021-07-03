@@ -22,7 +22,7 @@ import asyncio
 
 from loguru import logger
 
-import setproctitle
+import setproctitle  # type: ignore
 import websockets
 
 from enum import Enum
@@ -136,17 +136,17 @@ class Pipe:
         await self.pipe.writeJSONString(what)
 
     async def asyncSendAlways(self, what):
-        """ Send data without regard to any filter on the pipe. """
+        """Send data without regard to any filter on the pipe."""
         await self.pipe.writePickle(what)
 
     def sendAlways(self, what):
-        """ Send data without regard to any filter on the pipe. """
+        """Send data without regard to any filter on the pipe."""
         asyncio.create_task(self.pipe.writePickle(what))
 
 
 @dataclass
 class Runner:
-    """ Represent something to run in a processing layer """
+    """Represent something to run in a processing layer"""
 
     target: Optional[Callable] = None
     #    args: Iterable
@@ -339,7 +339,7 @@ def dataflowProcess(p: Process):
     setproctitle.setproctitle(f"{sys.argv[0]} [{p.mode}:{p.id}]")
 
     if isLinux:
-        import prctl
+        import prctl  # type: ignore
         import signal
 
         # tell the kernel to kill this process when the parent exits
@@ -564,7 +564,7 @@ class Dataflow:
                     )
 
     def __post_init__(self):
-        """ Given constructor input, build full process and layer mappings. """
+        """Given constructor input, build full process and layer mappings."""
 
         try:
             self.setupTopology()

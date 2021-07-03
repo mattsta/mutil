@@ -16,7 +16,7 @@ import aiofiles
 import aiofiles.os
 
 # for making temp names easily without asking the OS
-import ulid
+import ulid  # type: ignore
 
 import socket
 import platform
@@ -71,7 +71,7 @@ CHALLENGE_REPLY_LEN = DIGEST_LEN
 
 
 def flushBufferUpTo(self, size):
-    """ Helper for using sendfile on Linux to read socket into file directly """
+    """Helper for using sendfile on Linux to read socket into file directly"""
 
     blen = len(self._buffer)
     if blen == 0:
@@ -180,6 +180,8 @@ class PickleCxn:
                 self.loads = orjson.loads
                 self.dumps = orjson.dumps
             except:
+                # under pypy we won't have orjson, so use
+                # the system-provided JSON
                 self.loads = json.loads
                 self.dumps = lambda x: json.dumps(x).encode()
 
@@ -187,7 +189,7 @@ class PickleCxn:
     # Mutual Authentication Setup
     # ==========================================================================
     async def challengeSend(self) -> None:
-        """ Client sends challenge to server when client connects """
+        """Client sends challenge to server when client connects"""
         message = os.urandom(RANDBYTES_LEN)
         self.writer.write(CHALLENGE + message)
         await self.writer.drain()
@@ -204,7 +206,7 @@ class PickleCxn:
             raise AuthenticationError("digest received didn't verify?")
 
     async def challengeReply(self) -> None:
-        """ Server replies to client challenges """
+        """Server replies to client challenges"""
         message = await self.reader.readexactly(CHALLENGE_SEND_LEN)
         assert message[: len(CHALLENGE)] == CHALLENGE, f"message = {message!r}"
         message = message[len(CHALLENGE) :]
@@ -228,7 +230,7 @@ class PickleCxn:
     # Header-Related Data Operations
     # ==========================================================================
     async def getHeaderSize(self) -> int:
-        """ Helper function to extract length of next data sent """
+        """Helper function to extract length of next data sent"""
         dataSizeAsEncodedBytes = await self.reader.readexactly(self.headerBytes)
         return int.from_bytes(dataSizeAsEncodedBytes, byteorder="little")
 
@@ -279,7 +281,7 @@ class PickleCxn:
     # Byte Reading Operations
     # ==========================================================================
     async def readBytes(self) -> Optional[bytes]:
-        """ Return entire data record from stream using header-prefix length """
+        """Return entire data record from stream using header-prefix length"""
         try:
             dataSizeAsEncodedBytes = await self.reader.readexactly(self.headerBytes)
         except asyncio.IncompleteReadError as e:
@@ -290,7 +292,7 @@ class PickleCxn:
         return await self.reader.readexactly(dataSize)
 
     async def readBytesStreaming(self) -> AsyncIterable[Tuple[int, bytes]]:
-        """ async iterator for returning record data chunks until complete """
+        """async iterator for returning record data chunks until complete"""
         try:
             dataSizeAsEncodedBytes = await self.reader.readexactly(self.headerBytes)
         except asyncio.IncompleteReadError as e:
@@ -453,7 +455,7 @@ class PickleCxn:
             # sendfile returns 0 when hitting EOF on 'filefd' (but returns bytes
             # sent before returning 0 when no more bytes are available)
             try:
-                sent = await aiofiles.os.sendfile(self.writerfd, filefd, start, 0)
+                sent = await aiofiles.os.sendfile(self.writerfd, filefd, start, 0)  # type: ignore
             except (BlockingIOError, InterruptedError):
                 continue
             except:
@@ -480,7 +482,7 @@ class PickleCxn:
         #       populated in the stream.
 
     async def writeFromSendfileRange(self, filefd, start, end):
-        """ Write 'filefd' to current stream from 'start' to 'end' bytes """
+        """Write 'filefd' to current stream from 'start' to 'end' bytes"""
         logger.debug(f"Sending sendfile: {filefd} {start} {end}")
         remainingBytes = end
         while remainingBytes > 0:
@@ -694,7 +696,7 @@ class ServerUnix(Server):
 # ============================================================================
 @dataclass
 class Client:
-    """ Client objects have a .cxn we can read from and write to. """
+    """Client objects have a .cxn we can read from and write to."""
 
     cxn: Optional[PickleCxn] = None
     headerBytes: int = 4
@@ -753,7 +755,7 @@ class ClientTCP(Client):
     port: Optional[str] = None
 
     async def connect(self):
-        """ Connect to server. """
+        """Connect to server."""
         assert self.host is not None
         assert self.port is not None
         # also increase default buffer limit from 64 KB to 16 MB
@@ -769,7 +771,7 @@ class ClientUnix(Client):
     path: Optional[str] = None
 
     async def connect(self):
-        """ Connect to server. """
+        """Connect to server."""
         assert self.path is not None
         reader, writer = await asyncio.open_unix_connection(self.path)
 
@@ -793,7 +795,7 @@ class ClientWebSocket(Client):
         self.connect = becomeWebSocketClient
 
     async def becomeWebSocketClient(self, state, worker):
-        """ Connect to server. """
+        """Connect to server."""
         # This is the "basic" way to make an auto-reconnecting websocket client.
         # Yes, it's a mess of nested exception handlers, but it's what everybody
         # else seems to do.

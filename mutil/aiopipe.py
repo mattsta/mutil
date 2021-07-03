@@ -227,9 +227,9 @@ class AsyncPIPE:
         return await self.writeWithHeader(p)
 
     async def readPickle(self) -> Any:
-        """ Convert data bytes (in JSON format) to object then return """
+        """Convert data bytes (in JSON format) to object then return"""
         return orjson.loads(await self.readWithHeader())
 
     async def readActual(self) -> bytes:
-        """ Return data bytes from pipe without any conversion """
+        """Return data bytes from pipe without any conversion"""
         return await self.readWithHeader()

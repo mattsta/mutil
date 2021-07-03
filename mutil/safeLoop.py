@@ -7,7 +7,7 @@ try:
 except:
     # need to provide an empty value for uvloop because we
     # have 'uvloop' as a default argument later in the file.
-    uvloop = None
+    uvloop = None  # type: ignore
 
 import asyncio
 import collections
