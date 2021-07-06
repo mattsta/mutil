@@ -56,7 +56,7 @@ class FetchCache:
     async def get(self):
         """If file already retrieved today, return cached value"""
         if os.path.isfile(self.filepath):
-            logger.info(
+            logger.opt(depth=1).info(
                 f"Returning previously cached path for {self.filename} at {self.filepath}"
             )
 
@@ -64,7 +64,9 @@ class FetchCache:
             with open(self.filepath, "r") as f:
                 return f.read()
 
-        logger.info(f"Fetching {self.filename} from {self.url} into {self.filepath}")
+        logger.opt(depth=1).info(
+            f"Fetching {self.filename} from {self.url} into {self.filepath}"
+        )
         got = await self.session.get(self.url, headers=self.headers, params=self.params)
         content = await got.text()
 
