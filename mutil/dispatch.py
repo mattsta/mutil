@@ -18,6 +18,7 @@ class DArg:
     verify: Optional[Callable[[Any], bool]] = None
     errmsg: Optional[str] = None  # error message if validation fails
     val: Optional[Any] = None  # final converted / validated input value
+    desc: Optional[str] = None # self-documentation for parameter
 
     def isRest(self) -> bool:
         """Check if this argument consumes all remaining arguments.

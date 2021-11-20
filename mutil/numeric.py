@@ -43,7 +43,7 @@ def roundnear10(price: float, roundUp: bool) -> float:
     return roundnear(0.10, price, roundUp)
 
 
-def fmtPrice(x):
+def fmtPrice(x, decimals=4):
     """Print price with minimum of two digit decimals or maximum
     of 4 decimals.
 
@@ -57,7 +57,7 @@ def fmtPrice(x):
 
     # guard the formatting lengths against being 0 because python
     # throws an exception if you try to format with a 0 specifier.
-    capLen = max(2, min(4, abs(el)))
+    capLen = max(2, min(decimals, abs(el)))
     finalLen = max(1, capLen + (len(digits) - abs(el)))
 
     if abs(el) < 3:
@@ -66,7 +66,7 @@ def fmtPrice(x):
     return f"{x:,.{finalLen}g}"
 
 
-def fmtPricePad(n, padding=10):
+def fmtPricePad(n, padding=10, decimals=4):
     """Format price with padding as:
     - two decimal precision if <= 2 decimals
         - i.e. print 120 as 120.00
@@ -91,7 +91,7 @@ def fmtPricePad(n, padding=10):
         return f"{' ':>{padding}}"
 
     # print at most 4 digits, not ending in zeroes...
-    dn = Decimal(str(round(n, 4)))
+    dn = Decimal(str(round(n, decimals)))
     sign, digits, exponent = dn.as_tuple()
 
     # skip formatting nan
