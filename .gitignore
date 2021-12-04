@@ -1,3 +1,6 @@
 dist/
 sqlshard/
 *.sqlite
+
+# don't pin specifc versions since this is a library for upstream use
+poetry.lock

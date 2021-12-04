@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mutil"
-version = "1.2.4"
+version = "1.2.5"
 description = "mutil — matt's utilities"
 authors = ["Matt Stancliff <matt@genges.com>"]
 license = "Apache-2.0"
@@ -8,8 +8,8 @@ license = "Apache-2.0"
 [tool.poetry.dependencies]
 python = "^3.7"
 loguru = "^0.5.3"
-websockets = "^10.0"
-aiofiles = "^0.7.0"
+websockets = "^10.1"
+aiofiles = "^0.8.0"
 ulid-py = "^1.1.0"
 setproctitle = "^1.2.2"
 python-prctl = {version = "^1.8.1", platform = "linux"}
@@ -21,6 +21,7 @@ version = "^3.5.2"
 markers = "platform_python_implementation == 'CPython'"
 
 [tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
