@@ -332,7 +332,7 @@ class PickleCxn:
         Linux write directly into the file from the kernel without chunking
         it ourselves first.
         """
-        # logger.info(f"Reading into {targetPath}...")
+        # logger.info("Reading into {}...", targetPath)
         totalSize = 0
         tempFile = str(targetPath) + "." + str(ulid.new())
         try:
@@ -343,7 +343,7 @@ class PickleCxn:
 
             # logger.debug("Opening for temp reading... {}", tempFile)
             async with aiofiles.open(tempFile, "wb") as f:
-                # logger.info(f"Opened file...")
+                # logger.info("Opened file...")
                 async for chunkSize, chunk in self.readBytesStreaming():
                     totalSize += await f.write(chunk)
 
@@ -462,7 +462,7 @@ class PickleCxn:
                 logger.exception("Other error?")
                 raise
 
-            # logger.info(f"OS sendfile returned: {sent}")
+            # logger.info("OS sendfile returned: {}", sent)
 
             # update total sent, which may also be the next start offset
             start += sent
@@ -483,7 +483,7 @@ class PickleCxn:
 
     async def writeFromSendfileRange(self, filefd, start, end):
         """Write 'filefd' to current stream from 'start' to 'end' bytes"""
-        logger.debug(f"Sending sendfile: {filefd} {start} {end}")
+        logger.debug("Sending sendfile: {} {} {}", filefd, start, end)
         remainingBytes = end
         while remainingBytes > 0:
             # TODO: instead of maintaining 'end' we could also just use 'end' == 0
@@ -494,7 +494,7 @@ class PickleCxn:
                 self.writerfd, filefd, start, remainingBytes
             )
 
-            logger.debug(f"OS sendfile returned: {sent}")
+            logger.debug("OS sendfile returned: {}", sent)
             if sent == 0:
                 break
 
@@ -670,7 +670,7 @@ class ServerWebSocket(Server):
                 # anything else too. if anything else gets this high it is bad.
                 return
             finally:
-                logger.trace(f"Removing client {websocket}")
+                logger.trace("[websocket] Removing client:  {}", websocket)
                 del clients[websocket]
 
         async def doWebSocket():
@@ -835,12 +835,12 @@ class ClientWebSocket(Client):
                             # break to most recent True for retry
                             break
             except socket.gaierror as err:
-                logger.error(f"Socket error: {err}")
+                logger.error("Socket error: {}", err)
                 await asyncio.sleep(0.100)
                 # break to top level True
                 continue
             except ConnectionRefusedError:
-                logger.error(f"Connection refused for {self.uri}")
+                logger.error("Connection refused for {}", self.uri)
                 # retry connection
                 await asyncio.sleep(0.100)
                 continue
@@ -849,5 +849,5 @@ class ClientWebSocket(Client):
                 sys.exit(-1)
                 break
             except Exception as e:
-                logger.exception(f"Websocket session exception: {e}")
+                logger.exception("Websocket session exception: {e}", e)
                 continue
