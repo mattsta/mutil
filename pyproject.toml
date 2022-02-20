@@ -7,21 +7,27 @@ license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-loguru = "^0.5.3"
+loguru = "^0.6.0"
 websockets = "^10.1"
 aiofiles = "^0.8.0"
 ulid-py = "^1.1.0"
 setproctitle = "^1.2.2"
 python-prctl = {version = "^1.8.1", platform = "linux"}
 
+# NOTE: be careful with `poetry add orjson@latest` to update because it
+#       will remove this entire check and just reinstall orjson as a top-level
+#       dependency without any conditional matching.
 [tool.poetry.dependencies.orjson]
 # pin orjson to cpython only since it's not supported under pypy
 # (and pypy has better JIT-powered JSON anyway)
-version = "^3.5.2"
+version = "^3.6.7"
 markers = "platform_python_implementation == 'CPython'"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.5"
+pytest = "^7.0.1"
+mypy = "^0.931"
+types-requests = "^2.27.10"
+types-aiofiles = "^0.8.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
