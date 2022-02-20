@@ -827,7 +827,7 @@ class ClientWebSocket(Client):
                             ping_timeout=300,
                             close_timeout=1,
                             max_queue=1024,
-                            read_limit=2 ** 20,
+                            read_limit=2**20,
                         ) as websocket:
                             # 'worker' should never return unless it wants
                             # the connection to completely disconnect without a

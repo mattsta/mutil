@@ -35,6 +35,10 @@ def slotted_dataclass(dataclass_arguments=None, **kwargs):
     return decorator
 
 
+# replace with @dataclass(slots=True) for Python >= 3.10
+# but as of right now, pypy is still on max 3.8, so it
+# may be a while until we can use 3.10 features under
+# pypy jit'ing.
 @slotted_dataclass({"frozen": False})
 class CacheNode:
     """Each cache entry is represented by one CacheNode.
