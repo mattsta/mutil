@@ -33,7 +33,7 @@ class Client:
     """Represents the interest of a client wanting upstream messages,
     potentially filtering by key."""
 
-    ws: websockets.serve
+    ws: Any # is something like 'websockets.serve', but that type doesn't eixt
     keys: set[str] = field(default_factory=set)
 
     # skip routing and just send everything

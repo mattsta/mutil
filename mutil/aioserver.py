@@ -26,12 +26,13 @@ from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import (
-    Callable,
-    Iterable,
     Tuple,
     List,
+    Callable,
+    Iterable,
     Optional,
     Any,
+    Union,
     AsyncIterable,
     Awaitable,
 )
@@ -318,7 +319,7 @@ class PickleCxn:
     # ==========================================================================
     # Whole File Receiving Operations
     # ==========================================================================
-    async def readIntoFile(self, targetPath):
+    async def readIntoFile(self, targetPath: Union[str, Path]) -> int:
         """Read next record into 'targetPath'
 
         We write into a temp file in the same directory as 'targetPath' first
@@ -367,7 +368,7 @@ class PickleCxn:
 
             return 0
 
-    async def readIntoFileSendfile(self, targetPath):
+    async def readIntoFileSendfile(self, targetPath: Union[str, Path]) -> int:
         """Read next data bytes into a file directly from the network using
         sendfile().
 
@@ -406,6 +407,7 @@ class PickleCxn:
 
                 # we assume f.write() properly increments the file offset so below
                 # '0' references the current fd position and not start-of-file.
+                assert self.writerfd
                 while remainingData > 0:
                     # .writerfd because there is no .readerfd on a bidirectional cxn
                     try:
@@ -481,10 +483,11 @@ class PickleCxn:
         #       send will break the reader since those bytes won't be
         #       populated in the stream.
 
-    async def writeFromSendfileRange(self, filefd, start, end):
+    async def writeFromSendfileRange(self, filefd: int, start: int, end: int) -> None:
         """Write 'filefd' to current stream from 'start' to 'end' bytes"""
         logger.debug("Sending sendfile: {} {} {}", filefd, start, end)
         remainingBytes = end
+        assert self.writerfd
         while remainingBytes > 0:
             # TODO: instead of maintaining 'end' we could also just use 'end' == 0
             #       then the kernel sends 'filefd' until it hits EOF, but we still
@@ -578,7 +581,7 @@ class PickleCxn:
 class Server:
     cb: Optional[Callable] = None
     headerBytes: int = 4
-    authKey: str = field(default="", repr=False)
+    authKey: bytes = field(default=b"", repr=False)
 
     def __post_init__(self):
         assert authKey, f"Need an auth key to auth!"
@@ -609,7 +612,7 @@ class Server:
 @dataclass
 class ServerTCP(Server):
     host: Optional[str] = None
-    port: Optional[str] = None
+    port: Optional[int] = None
 
     def __post_init__(self):
         self.server = asyncio.start_server(
@@ -624,7 +627,7 @@ def defaultWebSocketEchoCallback(state, msg, websocket):
 @dataclass
 class ServerWebSocket(Server):
     host: Optional[str] = None
-    port: Optional[str] = None
+    port: Optional[int] = None
 
     server: Any = None
 
@@ -730,31 +733,31 @@ class Client:
 
     # simple wrappers around the inner connection methods
 
-    def writeObj(self, *args):
+    def writeObj(self, *args) -> Awaitable[None]:
         return self.cxn.writeObj(*args)
 
-    def tryWriteBytes(self, *args):
-        return self.cxn.tryWriteBytes(*args)
+    def tryWriteBytes(self, b: bytes) -> Awaitable[None]:
+        return self.cxn.tryWriteBytes(b)
 
-    def writeBytes(self, *args):
-        return self.cxn.writeBytes(*args)
+    def writeBytes(self, b: bytes) -> Awaitable[None]:
+        return self.cxn.writeBytes(b)
 
-    def writeFromFile(self, *args, **kwargs):
+    def writeFromFile(self, *args, **kwargs) -> Awaitable[None]:
         return self.cxn.writeFromFile(*args, **kwargs)
 
-    def readBytesStreaming(self, *args):
-        return self.cxn.readBytesStreaming(*args)
+    def readBytesStreaming(self) -> AsyncIterable[Tuple[int, bytes]]:
+        return self.cxn.readBytesStreaming()
 
-    def readIntoFile(self, *args):
-        return self.cxn.readIntoFile(*args)
+    def readIntoFile(self, targetPath: Union[str, Path]) -> Awaitable[int]:
+        return self.cxn.readIntoFile(targetPath)
 
 
 @dataclass
 class ClientTCP(Client):
     host: Optional[str] = None
-    port: Optional[str] = None
+    port: Optional[int] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect to server."""
         assert self.host is not None
         assert self.port is not None
@@ -770,7 +773,7 @@ class ClientTCP(Client):
 class ClientUnix(Client):
     path: Optional[str] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect to server."""
         assert self.path is not None
         reader, writer = await asyncio.open_unix_connection(self.path)
