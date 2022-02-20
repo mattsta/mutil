@@ -46,6 +46,11 @@ if platform.system() == "Linux":
 else:
     isLinux = False
 
+# ugh, pypy added THEN REMOVED sendfile so we need to workaround
+# os.sendfile not existing when using really old pypy or new pypy but
+# not medium-old pypy.
+VM_HAS_SENDFILE = hasattr(aiofiles.os, "sendfile")
+
 # challenge / response adapted from multiprocessing.connection
 # https://github.com/python/cpython/blob/a3a4bf3b8dc79e4ec4f24f59bd1e9e2a75229112/Lib/multiprocessing/connection.py#L727-L764
 CHALLENGE = b"#CHALLENGE#"
@@ -397,6 +402,7 @@ class PickleCxn:
         try:
             async with aiofiles.open(tempFile, "wb") as f:
                 fd = f.fileno()
+
                 remainingData = dataSize
                 bufferSize, bufferBytes = self.reader.flushBufferUpTo(remainingData)
 
@@ -451,6 +457,8 @@ class PickleCxn:
         Can optionally provide the known file size to prevent one extra sendfile read.
         (sendfile signals complete by returning '0' on the next call after all
          bytes have been written from 'filefd')
+
+        Note: sendfile() not available under pypy on macOS for recent releases.
         """
         start = 0
         while True:
@@ -536,10 +544,14 @@ class PickleCxn:
                 self.writer.write(header + prefix)
                 await self.writer.drain()
 
-                # now send bytes
-                filefd = f.fileno()
-                # logger.debug("Sending from file {} with size {}", filefd, filesize)
-                await self.writeFromSendfile(filefd, filesize)
+                if VM_HAS_SENDFILE:
+                    # now send bytes
+                    filefd = f.fileno()
+                    # logger.debug("Sending from file {} with size {}", filefd, filesize)
+                    await self.writeFromSendfile(filefd, filesize)
+                else:
+                    self.writer.write(f.read())
+                    await self.writer.drain()
 
     # ==========================================================================
     # Native Data Type Sending via JSON Pickling
