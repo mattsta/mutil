@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mutil"
-version = "1.2.5"
+version = "1.3.1"
 description = "mutil — matt's utilities"
 authors = ["Matt Stancliff <matt@genges.com>"]
 license = "Apache-2.0"
@@ -25,7 +25,7 @@ markers = "platform_python_implementation == 'CPython'"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0.1"
-mypy = "^0.931"
+mypy = "^0.971"
 types-requests = "^2.27.10"
 types-aiofiles = "^0.8.3"
 
