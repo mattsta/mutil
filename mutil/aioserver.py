@@ -11,6 +11,7 @@ import io
 import hmac
 import json
 import fcntl
+import inspect
 import asyncio
 import aiofiles
 import aiofiles.os
@@ -653,11 +654,27 @@ class ServerWebSocket(Server):
         self.server = self.becomeWebSocket
 
     def becomeWebSocket(self, state=None, forward=defaultWebSocketEchoCallback):
-        if "clients" not in state.state:
-            state.state["clients"] = {}
+        # this is an ugly hack because apparently sometimes 'state' is what we expect
+        # but other times it's one interior level deeper?
+        # quicker fixing it here than figuring out why we were getting bad input
+        # state from somewhere else at the moment.
+        if isinstance(state.state, dict):
+            # normal usage we expect
+            sstate = state.state
         else:
+            # wut
+            # apparently sometimes state.state is equivalent to
+            # the 'state' we expect above, so we need to add our new
+            # 'state' with clients inside of it into the state object
+            # itself?
+            state.state.state = {}
+            sstate = state.state.state
+
+        if "clients" in state.state:
             # don't reassign an existing clients, just empty it
-            state.state["clients"].clear()
+            sstate["clients"].clear()
+        else:
+            sstate["clients"] = {}
 
         if not forward:
             forward = defaultWebSocketEchoCallback
@@ -667,29 +684,71 @@ class ServerWebSocket(Server):
             # server and clients see an immediate disconnect.
             # websocket servers automatically maintain a connected client
             # dict from the viewpoint of the callback.
-            clients = state.state["clients"]
+            clients = sstate["clients"]
             clients[websocket] = None
 
+            # if callback only has 2 args, don't provide websocket callback arg.
+            argCount = len(inspect.signature(forward).parameters)
             try:
                 if asyncio.iscoroutinefunction(forward):
-                    async for msg in websocket:
-                        await forward(state, msg, websocket)
+                    if argCount == 3:
+                        async for msg in websocket:
+                            await forward(state, msg, websocket)
+                    elif argCount == 2:
+                        async for msg in websocket:
+                            await forward(state, msg)
+                    else:
+                        raise Exception("Callback must take 2 or 3 arguments!")
                 else:
-                    async for msg in websocket:
-                        forward(state, msg, websocket)
-            except websockets.ConnectionClosed:
+                    if argCount == 3:
+                        async for msg in websocket:
+                            forward(state, msg, websocket)
+                    elif argCount == 2:
+                        async for msg in websocket:
+                            forward(state, msg)
+                    else:
+                        raise Exception("Async Callback must take 2 or 3 arguments!")
+                logger.info("FAILED FORWARD!")
+            except websockets.ConnectionClosed as e:
                 # ConnectionClosedError and ConnectionClosedOK are subclasses of ConnectionClosed
                 # https://websockets.readthedocs.io/en/stable/_modules/websockets/exceptions.html
+                # https://websockets.readthedocs.io/en/stable/reference/common.html
+                logger.warning(
+                    "[{} :: {}] WebSocket Client Closed Connection: {}",
+                    websocket.local_address,
+                    websocket.remote_address,
+                    e,
+                )
                 return
-            except Exception as e:
-                # anything else too. if anything else gets this high it is bad.
-                return
+            except:
+                logger.exception("Exception while handling client message?")
             finally:
-                logger.trace("[websocket] Removing client:  {}", websocket)
+                # https://websockets.readthedocs.io/en/stable/reference/common.html
+                logger.warning(
+                    "[{} :: {}] Removing websocket client...",
+                    websocket.local_address,
+                    websocket.remote_address,
+                    websocket,
+                )
                 del clients[websocket]
 
         async def doWebSocket():
-            return await websockets.serve(customOnConnectCallback, self.host, self.port)
+            # annoying garbage piece of crap websockets library requires overriding
+            # its default "DISCONNECT ALL CLIENTS IF THEY SEND TOO MUCH DATA" settings.
+            # only wasted 2 days debugging these missing setting because the defaults
+            # are configured for like a 2 person chat demo before it falls over with
+            # no explanation.
+            return await websockets.serve(
+                customOnConnectCallback,
+                self.host,
+                self.port,
+                ping_interval=10,
+                ping_timeout=300,
+                max_size=None,
+                max_queue=None,
+                close_timeout=1,
+                read_limit=2 ** 24,
+            )
 
         return doWebSocket
 
