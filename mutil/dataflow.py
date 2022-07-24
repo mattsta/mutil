@@ -13,7 +13,6 @@ import inspect
 # from threading import Thread
 
 from .foreverloop import ForeverLoop
-from .safeLoop import safeLoop
 from .aiopipe import AsyncPIPE
 from . import aioserver
 
@@ -272,7 +271,7 @@ class Network:
                     network.cxn = aioserver.ClientWebSocket(uri=network.uri)
                 network.start = network.cxn.connect
             else:
-                raise Exception(f"Unexpected mode + proto? {network}")
+                raise Exception(f"Unexpected mode + proto? Got: {network}")
 
         self.setupPipes(inboundCount)
 
@@ -368,6 +367,7 @@ def dataflowProcess(p: Process):
         # new client callback.
         if p.server:
             # Run a network connection (client or server) with (optional) processing callback
+            # logger.info("Running server: {} :: {}", p, p.forwardFromClient)
             runServer = p.server(p, p.forwardFromClient)
             asyncio.create_task(runServer())
 
@@ -432,6 +432,7 @@ def dataflowProcess(p: Process):
         # extra level of 'try/except' indentation.
         try:
             with logger.contextualize(task_id=p.id):
+                logger.info("Starting...")
                 await runProcessing()
         except KeyboardInterrupt:
             # ignore control-c
@@ -442,7 +443,11 @@ def dataflowProcess(p: Process):
         except:
             logger.exception("huh what?")
 
-    safeLoop(startProcessing())
+    loop = asyncio.get_event_loop()
+    loop.create_task(startProcessing())
+    loop.run_forever()
+    loop.run_until_complete(loop.shutdown_asyncgens())
+    loop.close()
 
 
 @dataclass
@@ -525,6 +530,12 @@ class Dataflow:
                     if nextLevel:
                         nextPipes = nextLevel.pipesByWorker[widthIdx]
 
+                    logger.info(
+                        "[{} :: {}] Next pipes for network: {}",
+                        levelIdx,
+                        widthIdx,
+                        nextPipes,
+                    )
                     self.processMap.append(
                         Process(
                             id=f"{levelIdx}.{widthIdx}",
@@ -603,9 +614,9 @@ class Dataflow:
         while True:
             for l in launched:
                 try:
-                    l.join(1)
+                    l.join() # was join(1) why?
                     if l.exitcode:
-                        logger.info(f"Exited {l}, shutting down program")
+                        logger.info("Exited {}, shutting down program", l)
                         sys.exit(-1)
                 except KeyboardInterrupt:
                     sys.exit(-3)
