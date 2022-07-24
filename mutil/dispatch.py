@@ -278,6 +278,18 @@ class Dispatch:
 
             return None
 
+        def printhelp(long=True):
+            logger.info(
+                "Command: {} {}",
+                wholecmd,
+                " ".join([f"[{a.name}]" for a in iop.argmap()]),
+            )
+
+            if long:
+                # Only print doc string if it isn't the default repr() for the class
+                if op.__doc__ and "state: Any = None" not in op.__doc__:
+                    logger.info("{} :: {}", wholecmd, op.__doc__.strip())
+
         if op:
             # create operation instance from command name retrieved above
             iop = op(state, oargs)
@@ -287,16 +299,7 @@ class Dispatch:
             wholecmd = self.cmdcompletion[cmd][0]
 
             if gethelp:
-                logger.info(
-                    "Command: {} {}",
-                    wholecmd,
-                    " ".join([f"[{a.name}]" for a in iop.argmap()]),
-                )
-
-                # Only print doc string if it isn't the default repr() for the class
-                if op.__doc__ and "state: Any = None" not in op.__doc__:
-                    logger.info("{} :: {}", wholecmd, op.__doc__.strip())
-
+                printhelp()
                 return None
 
             try:
@@ -310,7 +313,13 @@ class Dispatch:
             if validated:
                 return await iop.run()
 
+            # print generic error message
             logger.error("[{}] Argument validation failed: {}", wholecmd, oargs)
+
+            # also print reminder of command arguments, but without full doc string.
+            printhelp(long=False)
+
+            # command failed
             return None
 
         complete = self.cmdcompletion.get(cmd)
