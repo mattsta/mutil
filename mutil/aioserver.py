@@ -634,7 +634,7 @@ class ServerTCP(Server):
 
 
 def defaultWebSocketEchoCallback(state, msg, websocket):
-    asyncio.create_task(websocket.send(msg[:64]))
+    asyncio.create_task(websocket.send("Default reply: " + msg[:64]))
 
 
 @dataclass
