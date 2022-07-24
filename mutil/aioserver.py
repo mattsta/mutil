@@ -679,6 +679,9 @@ class ServerWebSocket(Server):
         if not forward:
             forward = defaultWebSocketEchoCallback
 
+        logger.info("Server websocket using client handler: {}", forward)
+
+        @logger.catch
         async def customOnConnectCallback(websocket, path):
             # TODO: add clean shutdown. right now we just crash the
             # server and clients see an immediate disconnect.
@@ -876,27 +879,37 @@ class ClientWebSocket(Client):
         while True:
             try:
                 while True:
+                    logger.info("Connecting to: {}", self.uri)
                     try:
                         # Since the worker takes full control of the connection
                         # from here and runs its own 'while True' event handler
                         # loop, we can just use a context manager here.
                         async with websockets.connect(
                             self.uri,
-                            ping_interval=300,
+                            ping_interval=10,
                             ping_timeout=300,
+                            max_size=None,
+                            max_queue=None,
                             close_timeout=1,
-                            max_queue=1024,
-                            read_limit=2**20,
+                            read_limit=2 ** 24,
                         ) as websocket:
+                            logger.info("Connected to: {}", self.uri)
                             # 'worker' should never return unless it wants
                             # the connection to completely disconnect without a
                             # reconnect attempt.
                             if await worker(state, websocket) == True:
+                                logger.warning(
+                                    "[{} :: {}] Returning from websocket worker...",
+                                    websocket.local_address,
+                                    websocket.remote_address,
+                                )
                                 return
+                            logger.info("Failed worker? {}", worker)
                     except (
                         asyncio.TimeoutError,
                         websockets.ConnectionClosed,
-                    ):
+                    ) as e:
+                        logger.error("WS error: {}", e)
                         try:
                             # do we need a manual ping pong?
                             await asyncio.wait_for(
@@ -920,8 +933,10 @@ class ClientWebSocket(Client):
                 continue
             except KeyboardInterrupt:
                 # somebody CTRL-C'd us, so go away quickly.
+                import sys
+
                 sys.exit(-1)
                 break
             except Exception as e:
-                logger.exception("Websocket session exception: {e}", e)
+                logger.exception("Websocket session exception!")
                 continue
