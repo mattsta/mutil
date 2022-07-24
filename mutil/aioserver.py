@@ -550,7 +550,7 @@ class PickleCxn:
                     # logger.debug("Sending from file {} with size {}", filefd, filesize)
                     await self.writeFromSendfile(filefd, filesize)
                 else:
-                    self.writer.write(f.read())
+                    self.writer.write(await f.read())
                     await self.writer.drain()
 
     # ==========================================================================
