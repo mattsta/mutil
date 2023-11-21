@@ -1,11 +1,11 @@
 """ Pandas Utilities """
 
+import shutil
 from typing import Optional
 
 import pandas as pd  # type: ignore
 
 from loguru import logger
-import shutil
 
 
 def setupLogger():

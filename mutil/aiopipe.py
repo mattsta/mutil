@@ -1,11 +1,11 @@
-import os
-import io
-import sys
-import fcntl
 import asyncio
+import fcntl
+import io
+import os
+import sys
 
 from dataclasses import dataclass
-from typing import Union, List, Tuple, Any, Optional, Awaitable
+from typing import Any, Awaitable, List, Optional, Tuple, Union
 
 import orjson
 

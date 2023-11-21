@@ -4,28 +4,29 @@ Each level of the processing can be input via WebSockets or unix pipes,
 transform the input data, then forward to the next level which itself
 can be any of WebSockets or unix pipes"""
 
-from typing import Callable, Iterable, Tuple, List, Optional, Any, Union, Dict, Sequence
-from collections import deque, defaultdict
-from dataclasses import dataclass, field
-import multiprocessing
+import asyncio
 import inspect
-
-# from threading import Thread
-
-from .foreverloop import ForeverLoop
-from .aiopipe import AsyncPIPE
-from . import aioserver
+import multiprocessing
+import os
 
 import sys
-import asyncio
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
 
-from loguru import logger
+from enum import Enum
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import setproctitle  # type: ignore
 import websockets
 
-from enum import Enum
-import os
+from loguru import logger
+
+from . import aioserver
+from .aiopipe import AsyncPIPE
+
+# from threading import Thread
+
+from .foreverloop import ForeverLoop
 
 isLinux = sys.platform == "linux"
 
@@ -338,8 +339,9 @@ def dataflowProcess(p: Process):
     setproctitle.setproctitle(f"{sys.argv[0]} [{p.mode}:{p.id}]")
 
     if isLinux:
-        import prctl  # type: ignore
         import signal
+
+        import prctl  # type: ignore
 
         # tell the kernel to kill this process when the parent exits
         prctl.set_pdeathsig(signal.SIGKILL)
@@ -614,7 +616,7 @@ class Dataflow:
         while True:
             for l in launched:
                 try:
-                    l.join() # was join(1) why?
+                    l.join()  # was join(1) why?
                     if l.exitcode:
                         logger.info("Exited {}, shutting down program", l)
                         sys.exit(-1)

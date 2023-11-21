@@ -13,66 +13,66 @@ def test_noround():
 
 
 def test_rn5_up():
-    """ Round up """
+    """Round up"""
     assert n.roundnear5(0.24, True) == 0.25
     assert n.roundnear5(0.01, True) == 0.05
     assert n.roundnear5(-0.01, True) == 0.00
 
 
 def test_rn5_down():
-    """ Round down """
+    """Round down"""
     assert n.roundnear5(0.24, False) == 0.20
     assert n.roundnear5(0.01, False) == 0.00
     assert n.roundnear5(-0.01, False) == -0.05
 
 
 def test_rn10_up():
-    """ Round up """
+    """Round up"""
     assert n.roundnear10(0.24, True) == 0.30
     assert n.roundnear10(0.01, True) == 0.10
     assert n.roundnear10(-0.01, True) == 0.00
 
 
 def test_rn10_down():
-    """ Round down """
+    """Round down"""
     assert n.roundnear10(0.24, False) == 0.20
     assert n.roundnear10(0.01, False) == 0.00
     assert n.roundnear10(-0.01, False) == -0.10
 
 
 def roundnear7(p, updown):
-    """ Rounds near a *multiple* of 0.07, which may not be a number ending in .07"""
+    """Rounds near a *multiple* of 0.07, which may not be a number ending in .07"""
     return n.roundnear(0.07, p, updown)
 
 
 def test_rn7_up():
-    """ Round up """
+    """Round up"""
     assert roundnear7(0.24, True) == 0.28
     assert roundnear7(0.01, True) == 0.07
     assert roundnear7(-0.01, True) == 0.00
 
 
 def test_rn7_down():
-    """ Round down """
+    """Round down"""
     assert roundnear7(0.24, False) == 0.21
     assert roundnear7(0.01, False) == 0.00
     assert roundnear7(-0.01, False) == -0.07
 
 
 def roundnear1xx(p, updown):
-    """ Rounds near the next whole dollar increment, no cents. """
+    """Rounds near the next whole dollar increment, no cents."""
     return n.roundnear(1, p, updown)
 
 
 def test_rn1xx_up():
-    """ Round up """
+    """Round up"""
     assert roundnear1xx(0.24, True) == 1
     assert roundnear1xx(700.23, True) == 701
     assert roundnear1xx(-0.01, True) == 0.00
 
 
 def test_rn1xx_down():
-    """ Round down """
+    """Round down"""
     assert roundnear1xx(0.24, False) == 0.00
     assert roundnear1xx(700.23, False) == 700
     assert roundnear1xx(-0.01, False) == -1

@@ -1,6 +1,6 @@
-from dataclasses import dataclass, field
 import asyncio
 import time
+from dataclasses import dataclass, field
 
 
 @dataclass

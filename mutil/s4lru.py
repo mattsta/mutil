@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-import sqlite3
-from dataclasses import dataclass, field
-from typing import Dict, List, Any, Union, Optional, Callable
-import typing
-
 import asyncio
+
+import sqlite3
+import typing
 from collections import Counter
+from dataclasses import dataclass, field
 
 from threading import Lock
+from typing import Any, Callable, Dict, List, Optional, Union
+
 
 # Note: mypy isn't happy with this decorator or how we use it on
 #       CacheNode, so ignore the mypy errors for slotted_dataclass and

@@ -28,9 +28,9 @@
 # See: http://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
 # This version makes a GET request and passes the signature
 # in the Authorization header.
+import base64, datetime, hashlib, hmac, os, sys
 import urllib.parse
 from dataclasses import dataclass
-import sys, os, base64, datetime, hashlib, hmac
 from typing import Any, Dict
 
 
@@ -184,16 +184,18 @@ class SignatureV4:
 
 
 if __name__ == "__main__":
+    import sys
+
     # ************* SEND THE REQUEST *************
     # Run test as:
     #   python -m mutil.awsSignatureV4 access_key secret_key FetchURL
 
     import time
-    import sys
 
-    from loguru import logger
     import requests
     import yarl
+
+    from loguru import logger
 
     from .timer import Timer
 

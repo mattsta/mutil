@@ -1,5 +1,3 @@
-import websockets
-import orjson
 import asyncio
 
 # https://docs.python.org/3/library/collections.abc.html
@@ -7,6 +5,9 @@ import collections.abc
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+
+import orjson
+import websockets
 from typing import *
 
 from loguru import logger
@@ -20,7 +21,7 @@ DEFAULT_WS_PARAMS = dict(
     ping_timeout=300,
     close_timeout=1,
     max_queue=256,
-    read_limit=2 ** 20,
+    read_limit=2**20,
 )
 
 
@@ -33,7 +34,7 @@ class Client:
     """Represents the interest of a client wanting upstream messages,
     potentially filtering by key."""
 
-    ws: Any # is something like 'websockets.serve', but that type doesn't eixt
+    ws: Any  # is something like 'websockets.serve', but that type doesn't eixt
     keys: set[str] = field(default_factory=set)
 
     # skip routing and just send everything
@@ -80,7 +81,8 @@ class Server:
         Parameters are provided as:
         - current set of all subscribed keys on this proxy
         - set of new keys subscribed for this call (included in 'currentKeys')
-        - set of removed keys to unsubscribe (previously in 'currentKeys' but now removed)"""
+        - set of removed keys to unsubscribe (previously in 'currentKeys' but now removed)
+        """
         pass
 
     def recv(self):

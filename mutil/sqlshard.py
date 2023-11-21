@@ -1,20 +1,20 @@
 """ Shard SQLite DBs by key but allow range searches """
 
-import sqlite3
-import pathlib
 import os
-
-import orjson
+import pathlib
+import sqlite3
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+
+import orjson
 from typing import *
 
-from loguru import logger
+import concurrent.futures
 
 import zlib
 
-import concurrent.futures
+from loguru import logger
 
 # TODO: implementing deleting by ranges...
 # TODO: allow adjustable range column instead of defaulting to the second element

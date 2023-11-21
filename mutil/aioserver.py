@@ -6,41 +6,42 @@ Also has helper functions for writing directly into and out from
 files using aiofiles and sendfile helpers."""
 
 
-import os
-import io
-import hmac
-import json
-import fcntl
-import inspect
 import asyncio
+import fcntl
+import hmac
+import inspect
+import io
+import json
+import os
+import platform
+
+import socket
+from collections import defaultdict
+from dataclasses import dataclass, field
+from inspect import getmembers
+from multiprocessing import AuthenticationError
+
+from pathlib import Path
+from typing import (
+    Any,
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
+
 import aiofiles
 import aiofiles.os
 
 # for making temp names easily without asking the OS
 import ulid  # type: ignore
-
-import socket
-import platform
 import websockets
 
-from pathlib import Path
-from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import (
-    Tuple,
-    List,
-    Callable,
-    Iterable,
-    Optional,
-    Any,
-    Union,
-    AsyncIterable,
-    Awaitable,
-)
-from multiprocessing import AuthenticationError
-
 from loguru import logger
-from inspect import getmembers
 
 if platform.system() == "Linux":
     isLinux = True
@@ -750,7 +751,7 @@ class ServerWebSocket(Server):
                 max_size=None,
                 max_queue=None,
                 close_timeout=1,
-                read_limit=2 ** 24,
+                read_limit=2**24,
             )
 
         return doWebSocket
@@ -891,7 +892,7 @@ class ClientWebSocket(Client):
                             max_size=None,
                             max_queue=None,
                             close_timeout=1,
-                            read_limit=2 ** 24,
+                            read_limit=2**24,
                         ) as websocket:
                             logger.info("Connected to: {}", self.uri)
                             # 'worker' should never return unless it wants
