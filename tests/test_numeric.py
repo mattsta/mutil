@@ -1,6 +1,17 @@
 import mutil.numeric as n
 
 
+def test_noround():
+    """Round on boundary doesn't change"""
+
+    # we had errors where rounding on small numbers exactly
+    # on a matching round condition still caused the rounding
+    # logic to change the input value (which was very bad!)
+    for p in (0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35):
+        assert n.roundnear(0.05, p, True) == p
+        assert n.roundnear(0.05, p, False) == p
+
+
 def test_rn5_up():
     """ Round up """
     assert n.roundnear5(0.24, True) == 0.25

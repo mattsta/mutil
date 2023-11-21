@@ -13,13 +13,19 @@ def roundnear(end: float, price: float, roundUp: bool) -> float:
     Note: 0.00 is a valid multiple if rounding down from near-zero or rounding
           up from a negative near-zero."""
 
+    # if price is ALREADY on an increment, then it already complies
+    # (this doesn't catch _all_ cases though...)
     # Borrowed from https://stackoverflow.com/questions/13106953/python-round-05up
     p = Decimal(price)
     dend = Decimal(end)
     remainder = p.remainder_near(dend)
 
     # already ends in the target round increment
-    if remainder == 0:
+    # the 'remainder_near' can return negative "nearness" so account for it; also
+    # sometimes even with exact matches like 0.15 % 0.05, it returns 1.3e-17 (but
+    # using Decimal() is supposed to fix all those bad floating point math things
+    # anyway?), so also check a very tiny value to count as an exact match too.
+    if remainder == 0 or abs(remainder) < 0.0000000001:
         return price
 
     # or maybe we want round up, so round to nearest upper breach of increment
