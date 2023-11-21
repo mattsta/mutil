@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mutil"
-version = "1.5.3"
+version = "1.5.4"
 description = "mutil — matt's utilities"
 authors = ["Matt Stancliff <matt@genges.com>"]
 license = "Apache-2.0"
