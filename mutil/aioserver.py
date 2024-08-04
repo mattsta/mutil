@@ -28,10 +28,6 @@ from typing import (
     Awaitable,
     Callable,
     Iterable,
-    List,
-    Optional,
-    Tuple,
-    Union,
 )
 
 import aiofiles
@@ -122,7 +118,7 @@ class PickleCxn:
     reader: asyncio.StreamReader
     writer: asyncio.StreamWriter
     authKey: bytes = field(repr=False)
-    writerfd: Optional[int] = None
+    writerfd: int | None = None
     loads: Callable[..., Any] = json.loads
     dumps: Callable[..., bytes] = lambda x: json.dumps(x).encode()
 
@@ -288,7 +284,7 @@ class PickleCxn:
     # ==========================================================================
     # Byte Reading Operations
     # ==========================================================================
-    async def readBytes(self) -> Optional[bytes]:
+    async def readBytes(self) -> bytes | None:
         """Return entire data record from stream using header-prefix length"""
         try:
             dataSizeAsEncodedBytes = await self.reader.readexactly(self.headerBytes)
@@ -299,7 +295,7 @@ class PickleCxn:
         dataSize = int.from_bytes(dataSizeAsEncodedBytes, byteorder="little")
         return await self.reader.readexactly(dataSize)
 
-    async def readBytesStreaming(self) -> AsyncIterable[Tuple[int, bytes]]:
+    async def readBytesStreaming(self) -> AsyncIterable[tuple[int, bytes]]:
         """async iterator for returning record data chunks until complete"""
         try:
             dataSizeAsEncodedBytes = await self.reader.readexactly(self.headerBytes)
@@ -312,21 +308,29 @@ class PickleCxn:
 
         # if data size is under 1 MB, guarantee we return it all at once
         if dataSize < (1 << 20):
-            yield dataSize, await self.reader.readexactly(dataSize)
+            yield (
+                dataSize,
+                await asyncio.wait_for(
+                    self.reader.readexactly(dataSize), self.timeoutBody
+                ),
+            )
         else:
             # else, chunk the reply so we don't have to load it all at once, but
             # still use minimum 1 MB chunks (except for final data completion)
             received = 0
             while received < dataSize:
                 # read either 1 MB at a time or consume the remaining data
-                got = await self.reader.readexactly(min(1 << 20, dataSize - received))
+                got = await asyncio.wait_for(
+                    self.reader.readexactly(min(1 << 20, dataSize - received)),
+                    self.timeoutBody,
+                )
                 received += len(got)
                 yield dataSize, got
 
     # ==========================================================================
     # Whole File Receiving Operations
     # ==========================================================================
-    async def readIntoFile(self, targetPath: Union[str, Path]) -> int:
+    async def readIntoFile(self, targetPath: str | Path) -> int:
         """Read next record into 'targetPath'
 
         We write into a temp file in the same directory as 'targetPath' first
@@ -375,7 +379,7 @@ class PickleCxn:
 
             return 0
 
-    async def readIntoFileSendfile(self, targetPath: Union[str, Path]) -> int:
+    async def readIntoFileSendfile(self, targetPath: str | Path) -> int:
         """Read next data bytes into a file directly from the network using
         sendfile().
 
@@ -593,7 +597,7 @@ class PickleCxn:
 # ============================================================================
 @dataclass
 class Server:
-    cb: Optional[Callable] = None
+    cb: Callable | None = None
     headerBytes: int = 4
     authKey: bytes = field(default=b"", repr=False)
 
@@ -625,8 +629,8 @@ class Server:
 
 @dataclass
 class ServerTCP(Server):
-    host: Optional[str] = None
-    port: Optional[int] = None
+    host: str | None = None
+    port: int | None = None
 
     def __post_init__(self):
         self.server = asyncio.start_server(
@@ -640,8 +644,8 @@ def defaultWebSocketEchoCallback(state, msg, websocket):
 
 @dataclass
 class ServerWebSocket(Server):
-    host: Optional[str] = None
-    port: Optional[int] = None
+    host: str | None = None
+    port: int | None = None
 
     server: Any = None
 
@@ -759,7 +763,7 @@ class ServerWebSocket(Server):
 
 @dataclass
 class ServerUnix(Server):
-    path: Optional[str] = None
+    path: str | None = None
 
     server: Any = None
 
@@ -776,9 +780,9 @@ class ServerUnix(Server):
 class Client:
     """Client objects have a .cxn we can read from and write to."""
 
-    cxn: Optional[PickleCxn] = None
+    cxn: PickleCxn | None = None
     headerBytes: int = 4
-    authKey: Optional[bytes] = field(default=None, repr=False)
+    authKey: bytes | None = field(default=None, repr=False)
 
     def closed(self) -> bool:
         assert self.cxn
@@ -820,17 +824,17 @@ class Client:
     def writeFromFile(self, *args, **kwargs) -> Awaitable[None]:
         return self.cxn.writeFromFile(*args, **kwargs)
 
-    def readBytesStreaming(self) -> AsyncIterable[Tuple[int, bytes]]:
+    def readBytesStreaming(self) -> AsyncIterable[tuple[int, bytes]]:
         return self.cxn.readBytesStreaming()
 
-    def readIntoFile(self, targetPath: Union[str, Path]) -> Awaitable[int]:
+    def readIntoFile(self, targetPath: str | Path) -> Awaitable[int]:
         return self.cxn.readIntoFile(targetPath)
 
 
 @dataclass
 class ClientTCP(Client):
-    host: Optional[str] = None
-    port: Optional[int] = None
+    host: str | None = None
+    port: int | None = None
 
     async def connect(self) -> None:
         """Connect to server."""
@@ -846,7 +850,7 @@ class ClientTCP(Client):
 
 @dataclass
 class ClientUnix(Client):
-    path: Optional[str] = None
+    path: str | None = None
 
     async def connect(self) -> None:
         """Connect to server."""
@@ -858,7 +862,7 @@ class ClientUnix(Client):
 
 @dataclass
 class ClientWebSocket(Client):
-    uri: Optional[str] = None
+    uri: str | None = None
 
     def __post_init__(self):
         assert self.uri is not None
