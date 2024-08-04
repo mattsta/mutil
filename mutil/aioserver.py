@@ -165,6 +165,12 @@ class PickleCxn:
     # 100 Tbps = ~11.34 TiB
     headerBytes: int = 4  # increase for > 4 GB transfers
 
+    # timeout for basic network reading before a connection exception.
+    # We want "header" timeout to be infinite because we just sleep on it forever,
+    # but if we have a body to consume it should be arriving quickly.
+    timeoutHeader: float | int | None = None
+    timeoutBody: float | int | None = 5
+
     # ==========================================================================
     # Init
     # ==========================================================================
@@ -298,7 +304,9 @@ class PickleCxn:
     async def readBytesStreaming(self) -> AsyncIterable[tuple[int, bytes]]:
         """async iterator for returning record data chunks until complete"""
         try:
-            dataSizeAsEncodedBytes = await self.reader.readexactly(self.headerBytes)
+            dataSizeAsEncodedBytes = await asyncio.wait_for(
+                self.reader.readexactly(self.headerBytes), self.timeoutHeader
+            )
         except asyncio.IncompleteReadError as e:
             # don't throw a noisy exception if this is a clean shutdown
             if self.reader.at_eof():
