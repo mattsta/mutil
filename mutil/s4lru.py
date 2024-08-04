@@ -10,37 +10,10 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable
 
 
-# Note: mypy isn't happy with this decorator or how we use it on
-#       CacheNode, so ignore the mypy errors for slotted_dataclass and
-#       ignore for all the "unexpected keyword argument" on CacheNode.
-def slotted_dataclass(dataclass_arguments=None, **kwargs):
-    """Convert class fields to attrs for more efficient space usage."""
-    if dataclass_arguments is None:
-        dataclass_arguments = {}
-
-    def decorator(cls):
-        old_attrs = {}
-
-        for key, value in kwargs.items():
-            old_attrs[key] = getattr(cls, key)
-            setattr(cls, key, value)
-
-        cls = dataclass(cls, **dataclass_arguments)
-        for key, value in old_attrs.items():
-            setattr(cls, key, value)
-        return cls
-
-    return decorator
-
-
-# replace with @dataclass(slots=True) for Python >= 3.10
-# but as of right now, pypy is still on max 3.8, so it
-# may be a while until we can use 3.10 features under
-# pypy jit'ing.
-@slotted_dataclass({"frozen": False})
+@dataclass(slots=True)
 class CacheNode:
     """Each cache entry is represented by one CacheNode.
 
@@ -50,9 +23,8 @@ class CacheNode:
     have 4 million CacheNode objects.
     """
 
-    __slots__ = ("prev", "next", "data", "level", "size", "key")
-    prev: Optional[CacheNode]
-    next: Optional[CacheNode]
+    prev: CacheNode | None
+    next: CacheNode | None
 
     # Each node must know its own level, size, and name because:
     # when upgrading entries, we need to know the current level+size
@@ -100,10 +72,10 @@ class CacheLevel:
     This is a fixed cardinality object (per active LRU).
     """
 
-    prev: Optional["CacheLevel"] = None
-    next: Optional["CacheLevel"] = None
-    head: Optional[CacheNode] = None
-    tail: Optional[CacheNode] = None
+    prev: "CacheLevel" | None = None
+    next: "CacheLevel" | None = None
+    head: CacheNode | None = None
+    tail: CacheNode | None = None
     level: int = 0
     size: int = 0
     count: int = 0
@@ -163,7 +135,7 @@ class CacheLevel:
 
         self.head = new
 
-    def removeTail(self) -> Optional[CacheNode]:
+    def removeTail(self) -> CacheNode | None:
         if self.tail:
             orig = self.tail
             self.size -= orig.size
@@ -180,7 +152,7 @@ class CacheLevel:
 
         return None
 
-    def evict(self, targetCapacity: int) -> List[CacheNode]:
+    def evict(self, targetCapacity: int) -> list[CacheNode]:
         """If level is over capacity, remove tail until under capacity"""
         removed = []
         if self.size > targetCapacity:
@@ -224,7 +196,7 @@ class S4LRU:
     # total cache size in bytes (or whatever units you are using for size attributes) before evictions start
     capacity: int
     levelCount: int = 4
-    itemNode: Dict[str, CacheNode] = field(default_factory=dict)
+    itemNode: dict[str, CacheNode] = field(default_factory=dict)
 
     size: int = 0  # current size of all LRU content items
     capacityPerLevel: int = 0
@@ -296,7 +268,7 @@ class S4LRU:
         """
         return sum([x.count for x in self.levels])
 
-    def evict(self) -> List[str]:
+    def evict(self) -> list[str]:
         """Based on saved size calculations, clean up the LRU in a loop.
 
         Note: we iterate the levels from lowest to highest, so multiple
@@ -322,7 +294,7 @@ class S4LRU:
         # evict anything required...
         with self.lock:
             for level in self.levels:
-                removed: List[CacheNode] = level.evict(self.capacityPerLevel)
+                removed: list[CacheNode] = level.evict(self.capacityPerLevel)
 
                 if removed:
                     self.cursor.execute("BEGIN")
