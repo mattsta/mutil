@@ -3,8 +3,10 @@
 import itertools
 import re
 
+from typing import Iterable
 
-def expand_string_numeric(part: str) -> list[str]:
+
+def expand_string_numeric(part: str) -> Iterable[str]:
     """Return an iterable of integer strings if provided in the form A..B.
 
     Example: expand_string_numeric("5..10") -> ['5', '6', '7', '8', '9', '10']
@@ -22,7 +24,7 @@ def expand_string_numeric(part: str) -> list[str]:
     return [part]
 
 
-def expand_string_curly_braces(s):
+def expand_string_curly_braces(s) -> list[str]:
     """Expand a single input string having curly brace replacements into a list of strings.
 
     Usage: expand_string_curly_braces("Hello My Name is {Glorbo,Rambo,Crambo}") generates
@@ -55,7 +57,7 @@ def expand_string_curly_braces(s):
             # Because we cross-product these results, we need to assemble an inner
             # list of extracted matches so they get applied evenly over the
             # non-self-enumerating parts.
-            inner_parts = []
+            inner_parts: list[str] = []
             for ps in p.split(","):
                 found = expand_string_numeric(ps)
                 # we add EACH EXTRACTED GROUP as individual elements to the inner result list.
