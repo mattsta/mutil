@@ -1,4 +1,4 @@
-""" A wrapper around asyncio starting to cleanly
+"""A wrapper around asyncio starting to cleanly
 wait for and shutdown tasks when a full exit is
 signaled."""
 

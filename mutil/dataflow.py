@@ -1,4 +1,4 @@
-""" A hierarchical task processing and forwarding system.
+"""A hierarchical task processing and forwarding system.
 
 Each level of the processing can be input via WebSockets or unix pipes,
 transform the input data, then forward to the next level which itself

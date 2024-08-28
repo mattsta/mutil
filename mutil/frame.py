@@ -1,4 +1,4 @@
-""" Pandas Utilities """
+"""Pandas Utilities"""
 
 import shutil
 from typing import Optional

@@ -1,10 +1,9 @@
-""" aioservers for WebSockets, TCP, and Unix pipes.
+"""aioservers for WebSockets, TCP, and Unix pipes.
 
 Data transferred either by JSON encoding or direct byte sending.
 
 Also has helper functions for writing directly into and out from
 files using aiofiles and sendfile helpers."""
-
 
 import asyncio
 import fcntl

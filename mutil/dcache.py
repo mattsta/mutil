@@ -1,4 +1,4 @@
-""" Disk-based cache utils """
+"""Disk-based cache utils"""
 
 from dataclasses import dataclass, field
 from typing import *

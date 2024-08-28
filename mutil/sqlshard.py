@@ -1,4 +1,4 @@
-""" Shard SQLite DBs by key but allow range searches """
+"""Shard SQLite DBs by key but allow range searches"""
 
 import os
 import pathlib

@@ -1,4 +1,4 @@
-""" A loop for replacing consumed asyncio tasks with
+"""A loop for replacing consumed asyncio tasks with
 new asyncio tasks as they partially complete.
 
 This is needed because the asyncio.wait() interface
