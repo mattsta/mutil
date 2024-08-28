@@ -89,7 +89,7 @@ class Op:
     """
 
     state: Any = None
-    oargs: Optional[str] = None  # original args
+    oargs: str | None = None  # original args
     args: Iterable[Any] = field(default_factory=list)  # split args
 
     def argmap(self) -> list[DArg]:
@@ -101,7 +101,11 @@ class Op:
         return [DArg("*margs")]
 
     def setup(self):
-        """Automatically split original full string args into a list of args"""
+        """Automatically split original full string args into a list of args.
+
+        Note: don't try to make setup() into a __post_init__() method because then
+              every subclass would need to implement their own empty __post_init__()
+              just to call super() here."""
 
         if self.oargs:
             # split string arguments while maintaining quoted params as whole arguments
@@ -171,7 +175,7 @@ class Dispatch:
     transformations before being handed off to your individual command worker
     methods."""
 
-    opcodes: dict[str, Type[Op]]
+    opcodes: Mapping[str, Type[Op] | Mapping[str, Type[Op]]]
 
     cmdcompletion: dict[str, list[str]] = field(
         default_factory=lambda: defaultdict(list)
