@@ -55,6 +55,7 @@ class DualCache:
             "/tmp",
             str(pathlib.Path.home()),
         }
+
         shutil.rmtree(self.cacheDisk.directory)
 
     def __getitem__(self, who):
@@ -65,6 +66,11 @@ class DualCache:
         # always set to memory _and_ disk
         self.cacheMem[who] = what
         self.cacheDisk[who] = what  # type: ignore
+
+    def __delitem__(self, who):
+        """Allow dual deletions of full keys too"""
+        del self.cacheMem[who]
+        del self.cacheDisk[who]
 
     def iterkeys(self):
         """match the diskcache API for iterating things"""
