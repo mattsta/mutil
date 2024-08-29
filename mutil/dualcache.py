@@ -31,8 +31,6 @@ class DualCache:
     cacheMem: dict[Any, Any] = field(init=False)
     cacheDisk: Mapping[Any, Any] = field(init=False)
 
-    get: Callable = field(init=False)
-
     events: dict[Any, asyncio.Event] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -40,7 +38,6 @@ class DualCache:
         self.cacheDisk = diskcache.Cache(
             (self.cachePrefix or "./cache-") + self.cacheName
         )
-        self.get = self.cacheDisk.get
 
         # load disk cache into memory for faster immediate reads
         # (yes, this is the simplest way... diskcache doesn't have .keys() or .values())
@@ -60,7 +57,13 @@ class DualCache:
 
     def __getitem__(self, who):
         # always read from memory
-        return self.cacheMem.get(who)
+        return self.cacheMem[who]
+
+    def get(self, who, default=None):
+        """Match dict api for .get() but use memory for all getting.
+
+        You can use checkDisk() if you want to read from disk cache directly."""
+        return self.cacheMem.get(who, default)
 
     def __setitem__(self, who, what):
         # always set to memory _and_ disk
