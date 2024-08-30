@@ -17,9 +17,23 @@ class DArg:
     name: str
     convert: Optional[Callable[[Any], Any]] = None
     verify: Optional[Callable[[Any], bool]] = None
-    errmsg: Optional[str] = None  # error message if validation fails
-    val: Optional[Any] = None  # final converted / validated input value
-    desc: Optional[str] = None  # self-documentation for parameter
+
+    # error message if validation fails
+    errmsg: Optional[str] = None
+
+    # final converted / validated input value
+    val: Optional[Any] = None
+
+    # self-documentation for parameter
+    desc: Optional[str] = None
+
+    # if value missing, allow default. Only works for last elements currently.
+    # TODO: enable named parameter lists too.
+    default: Any = None
+
+    def __post_init__(self) -> None:
+        # Parameters can't be named "State" because it conflicts with the Op.state shared global.
+        assert self.name != "state"
 
     def isRest(self) -> bool:
         """Check if this argument consumes all remaining arguments.
@@ -40,9 +54,13 @@ class DArg:
     def validate(self, x: Any) -> bool:
         """Attempt to convert and verify 'x' setting it to self.val on success.
 
-        If both pass (if they are defined), returns True.
+        If both 'convert' and 'verify' pass (if they are defined), returns True.
         If neither are defined, returns True.
         If either are defined and any fail, returns False."""
+
+        if x is None:
+            self.val = self.default
+            return True
 
         # Conversion requested? Convert.
         final = x
@@ -88,9 +106,20 @@ class Op:
     as instance variables.
     """
 
+    # operations can have a pass-through state for accessing shared global
+    # entities if users want to pass through applications state to every command.
+    # Just don't name any argument DArg("state") or this will break.
     state: Any = None
-    oargs: str | None = None  # original args
-    args: Iterable[Any] = field(default_factory=list)  # split args
+
+    # Note: 'args__' and 'oargs__' are named differently so they don't conflict
+    #       with user details if users request their own argument names
+    #       of 'args' or 'oargs'.
+
+    # original args before processing
+    oargs__: str | None = None
+
+    # split args
+    args__: Iterable[Any] = field(default_factory=list)
 
     def argmap(self) -> list[DArg]:
         """Map of positional arguments to instance variable names.
@@ -107,18 +136,23 @@ class Op:
               every subclass would need to implement their own empty __post_init__()
               just to call super() here."""
 
-        if self.oargs:
+        if self.oargs__:
             # split string arguments while maintaining quoted params as whole arguments
-            self.args.extend(shlex.split(self.oargs))
+            self.args__.extend(shlex.split(self.oargs__))
 
         # use argmap to populate instance variables given an automatic specification
-        amap = self.argmap()
+        amap: Final = self.argmap()
 
         # fail up front if required number of arguments is more than provided number of arguments
         # Allow '*' arguments to be empty:
         reduceByStar = int(amap[-1].isRest() if amap else False)
-        lenDiff = len(self.args) - (len(amap) - reduceByStar)
-        if lenDiff < 0:
+        lenDiff = len(self.args__) - (len(amap) - reduceByStar)
+
+        # reject command if:
+        #  - missing arguments
+        #  - but only if all arguments not provided don't have a default.
+        #  - i.e. allow missing arguments if all missing args have defaults.
+        if lenDiff < 0 and not all([arg.default for arg in amap[len(amap) :]]):
             # but don't fail if the last argument is a "consume rest as list" arguments,
             # meaning technically this command can also accept the '*' param being empty.
             logger.error(
@@ -131,25 +165,30 @@ class Op:
         for idx, name in enumerate(amap):
             if name.isRest():
                 # if name starts with asterisk, use the remaining args and report success
-                if name.validate(self.args[idx:]):
+                if name.validate(self.args__[idx:]):
                     setattr(self, name.usename(), name.val)
                 else:
                     logger.error(
                         "Failed validation of argument {} ({}){}",
                         idx,
-                        self.args[idx:],
+                        self.args__[idx:],
                         f": {name.errmsg}" if name.errmsg else "",
                     )
 
                     return False
             else:
-                if name.validate(self.args[idx]):
+                # TODO: refactor this logic to be cleaner.
+                # The purpose is "give argument to validator if argument exists, but if argument
+                #                 doesn't exist, give validator None so it can potentially use a default."""
+                # This is also where we could potentially use named parameters (instead of only position indexes)
+                # if we want users to be able to specify "cmd 1 2 3" or "cmd a=1 c=3" if "b" has a default.
+                if name.validate(self.args__[idx] if idx < len(self.args__) else None):
                     setattr(self, name.usename(), name.val)
                 else:
                     logger.error(
                         "Failed validation of argument {} ({}) because: {}",
                         idx,
-                        self.args[idx],
+                        self.args__[idx],
                         name.errmsg,
                     )
 
