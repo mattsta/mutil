@@ -186,7 +186,8 @@ class Op:
                     setattr(self, name.usename(), name.val)
                 else:
                     logger.error(
-                        "Failed validation of argument {} ({}) because: {}",
+                        "Failed validation of argument '{}' (position {}) ({}) because: {}",
+                        name.name,
                         idx,
                         self.args__[idx],
                         name.errmsg,
@@ -326,7 +327,14 @@ class Dispatch:
             logger.info(
                 "Command: {} {}",
                 wholecmd,
-                " ".join([f"[{a.name}]" for a in iop.argmap()]),
+                " ".join(
+                    [
+                        f"[{a.name} default={a.default}]"
+                        if a.default is not None
+                        else f"[{a.name}]"
+                        for a in iop.argmap()
+                    ]
+                ),
             )
 
             if long:
