@@ -119,7 +119,7 @@ class Op:
     oargs__: str | None = None
 
     # split args
-    args__: Iterable[Any] = field(default_factory=list)
+    args__: list[Any] = field(default_factory=list)
 
     def argmap(self) -> list[DArg]:
         """Map of positional arguments to instance variable names.
@@ -215,19 +215,25 @@ class Dispatch:
     transformations before being handed off to your individual command worker
     methods."""
 
-    opcodes: Mapping[str, Type[Op] | Mapping[str, Type[Op]]]
+    opcodes: Mapping[str, Type[Op]]
 
     cmdcompletion: dict[str, list[str]] = field(
         default_factory=lambda: defaultdict(list)
     )
 
+    cmds: list[str] = field(default_factory=list)
+    cmdsByGroup: list[str | dict[str, ValuesView[str]]] = field(default_factory=list)
+
     def __post_init__(self):
         """Cache all command names and generate the full minimal lookup map."""
-        self.cmds = []
-        self.cmdsByGroup = []
 
         def minimizeOperationsTable():
             totalOp = {}
+
+            # Count all prefixes of all commands so we can
+            # determine if we have conflicting prefixes.
+            # (conflicting prefixes will have a count > 1)
+            allCmds: dict[str, int] = Counter()
 
             def populateForKey(key):
                 prefix = ""
@@ -242,10 +248,6 @@ class Dispatch:
                     # command names
                     self.cmdcompletion[prefix].append(key)
 
-            # Count all prefixes of all commands so we can
-            # determine if we have conflicting prefixes.
-            # (conflicting prefixes will have a count > 1)
-            allCmds = Counter()
             for key, val in self.opcodes.items():
                 # if this is a nested namespace command set, index
                 # the INNER commands, not the namespace description itself.
