@@ -152,7 +152,11 @@ class Op:
         #  - missing arguments
         #  - but only if all arguments not provided don't have a default.
         #  - i.e. allow missing arguments if all missing args have defaults.
-        if lenDiff < 0 and not all([arg.default for arg in amap[len(amap) :]]):
+        # NOTE: minor bug here if the command only has one argument, but it's a *star argument, then we can't detect "missing arguments."
+        #       Perhaps we need an option to set *star arguments to required=True so we can require something there?
+        if lenDiff < 0 and not all(
+            [arg.default for arg in amap[len(amap) - reduceByStar :]]
+        ):
             # but don't fail if the last argument is a "consume rest as list" arguments,
             # meaning technically this command can also accept the '*' param being empty.
             logger.error(
@@ -215,14 +219,19 @@ class Dispatch:
     transformations before being handed off to your individual command worker
     methods."""
 
-    opcodes: Mapping[str, Type[Op]]
+    # user input of either {name: callable} or {category: {name: callable}} mappings
+    opcodes: Mapping[str, Type[Op] | Mapping[str, Type[Op]]]
+
+    # post-processed version of 'opcodes' for actual executing of things
+    # (a flat version of every dis-ambiguated command name without category details)
+    totalOps: Mapping[str, Type[Op]] = field(init=False)
 
     cmdcompletion: dict[str, list[str]] = field(
         default_factory=lambda: defaultdict(list)
     )
 
     cmds: list[str] = field(default_factory=list)
-    cmdsByGroup: list[str | dict[str, ValuesView[str]]] = field(default_factory=list)
+    cmdsByGroup: list[str | dict[str, frozenset[str]]] = field(default_factory=list)
 
     def __post_init__(self):
         """Cache all command names and generate the full minimal lookup map."""
@@ -249,11 +258,12 @@ class Dispatch:
                     self.cmdcompletion[prefix].append(key)
 
             for key, val in self.opcodes.items():
-                # if this is a nested namespace command set, index
-                # the INNER commands, not the namespace description itself.
+                # if this is a nested namespace command set,
+                # index the INNER commands, not the namespace description itself.
                 if isinstance(val, dict):
-                    cg = {key: val.keys()}
+                    cg = {key: frozenset(val.keys())}
                     self.cmdsByGroup.append(cg)
+
                     for kkey in val.keys():
                         populateForKey(kkey)
                         self.cmds.append(kkey)
@@ -286,14 +296,12 @@ class Dispatch:
 
             # Replace user provided opcode table with our complete
             # non-conflicting dispatch lookup table.
-            self.opcodes = totalOp
+            self.totalOps = totalOp
             self.cmds = sorted(self.cmds)
 
         minimizeOperationsTable()
 
-    async def runop(
-        self, cmd: str, oargs: Optional[str] = None, state: Any = None
-    ) -> Any:
+    async def runop(self, cmd: str, oargs: str | None = None, state: Any = None) -> Any:
         """Run requested command.
 
         Validates 'args' for 'cmd' (if validator provided) then runs
@@ -308,9 +316,9 @@ class Dispatch:
             gethelp = True
             cmd = cmd[:-1]
 
-        op = self.opcodes.get(cmd)
+        op = self.totalOps.get(cmd)
 
-        if (not op) and (cmd in self.opcodes):
+        if (not op) and (cmd in self.totalOps):
             wholecmd = self.cmdcompletion[cmd][0]
 
             # If partial name given, show full command too.
@@ -331,9 +339,11 @@ class Dispatch:
                 wholecmd,
                 " ".join(
                     [
-                        f"[{a.name} default={a.default}]"
-                        if a.default is not None
-                        else f"[{a.name}]"
+                        (
+                            f'[{a.name} default="{a.default}"]'
+                            if a.default is not None
+                            else f"[{a.name}]"
+                        )
                         for a in iop.argmap()
                     ]
                 ),
@@ -356,14 +366,16 @@ class Dispatch:
                 printhelp()
                 return None
 
+            validated = True  # optimism! assume success
+
             try:
-                validated = True  # optimism! assume success
                 validated = iop.setup()
             except NotImplementedError:
                 # if no argument validation provided, just skip
                 # and assume arguments are okay.
                 pass
 
+            # RUN THE COMMAND if argument validation passed
             if validated:
                 return await iop.run()
 
@@ -380,7 +392,7 @@ class Dispatch:
         if complete:
             print("Completion choices:", ", ".join(complete))
         else:
-            print(f"All commands:", ", ".join(self.cmds))
+            print("All commands:", ", ".join(self.cmds))
 
             # Show full command breakdown on just '?' request
             if gethelp:
