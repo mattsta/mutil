@@ -115,8 +115,9 @@ class BGTask:
 
                         # await the correct coroutine directly
                         await active
-                    except:
+                    except Exception as e:
                         self.schedule.pause = 0
+                        logger.exception("[{}] Exception: {}", self.name, str(e))
                         raise
                     finally:
                         self.schedule.stopped.append(self.schedule.now())
@@ -178,7 +179,14 @@ class BGTask:
 
     def report(self) -> None:
         meta = f" :: [{self.meta}] " if self.meta else ""
-        logger.info("[{} :: {}{}] {}", self.created, self.name, meta, self.coroutine)
+        logger.info(
+            "[{} :: {}{} :: {}] {}",
+            self.created,
+            self.name,
+            meta,
+            id(self),
+            self.coroutine,
+        )
         logger.info(
             "[{} :: {}{}] Schedule: {}",
             self.created,
@@ -243,6 +251,14 @@ class BGTasks:
 
     def stop(self, task):
         return task.stop()
+
+    def stopId(self, taskId: int):
+        # Lazy O(N) iterator here because we aren't indexing tasks by anything
+        # useful and currently we expect to have less than 5-10 tasks active at once.
+        # If this is a larger concern, we could maintain an id-index-to-task map too.
+        for task in self:
+            if id(task) == taskId:
+                return task.stop()
 
     def cleanup(self, task) -> None:
         if self.final:
