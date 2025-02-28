@@ -65,40 +65,46 @@ class AsyncPIPE:
         if log:
             from loguru import logger
 
-        # On Linux we get bigger pipes, but we have to request them each time.
-        # Also note: only works if the proper /proc entries are increased.
+        # On Linux, increase pipe buffer size to improve performance
         if sys.platform == "linux":
+            # Get the maximum allowed pipe size on this system
             with open("/proc/sys/fs/pipe-max-size") as fpm:
-                maxSize = int(fpm.read())
+                max_size = int(fpm.read())
 
             write_fd = self.write_fd
 
-            # x86_64-linux-gnu/bits/fcntl-linux.h
-            # 203:# define F_SETPIPE_SZ 1031    /* Set pipe page size array.  */
-            # 204:# define F_GETPIPE_SZ 1032    /* Set pipe page size array.  */
-            origSz = fcntl.fcntl(write_fd, 1032)
+            # Linux fcntl constants for pipe size operations
+            F_GETPIPE_SZ = 1032  # Get current pipe size
+            F_SETPIPE_SZ = 1031  # Set pipe size
+
+            # Get the current pipe size
+            orig_size = fcntl.fcntl(write_fd, F_GETPIPE_SZ)
             if log:
                 logger.trace(
-                    f"Current pipe size is: {origSz} but system max per user is {maxSize}"
+                    f"Current pipe size is: {orig_size} but system max per user is {max_size}"
                 )
 
-            trySz = maxSize
-            while trySz > origSz:
-                sz = trySz
+            # Start with maximum size and try progressively smaller sizes until successful
+            try_size = max_size
+            final_size = orig_size  # Default to original size if all attempts fail
+
+            while try_size > orig_size:
                 try:
                     if log:
-                        logger.trace(f"Trying {trySz}...")
-                    sz = fcntl.fcntl(write_fd, 1031, trySz)
+                        logger.trace(f"Trying pipe size: {try_size}...")
+
+                    # Attempt to set the new pipe size
+                    final_size = fcntl.fcntl(write_fd, F_SETPIPE_SZ, try_size)
+
                     if log:
-                        logger.trace(f"Using {sz}!")
-                    break
-                except:
-                    # failed to set, so try smaller...
-                    trySz //= 2
-                    continue
+                        logger.trace(f"Successfully set pipe size to: {final_size}!")
+                    break  # Success, exit the loop
+                except Exception:
+                    # Failed to set this size, try half the size
+                    try_size //= 2
 
             if log:
-                logger.info(f"New pipe size is: {sz / 1024 / 1024} MB")
+                logger.info(f"New pipe size is: {final_size / 1024 / 1024} MB")
 
     def on_read(self):
         if self._read_futures:
