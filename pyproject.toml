@@ -24,7 +24,7 @@ version = "^3.6.7"
 markers = "platform_python_implementation == 'CPython'"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.5.0"
+mypy = "^1.15.0"
 pytest = "^8.3"
 types-requests = "^2.27.10"
 types-aiofiles = "^24.1.0"
@@ -33,6 +33,11 @@ pytest-xdist = "^3.6.1"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+check_untyped_defs = true
+show_traceback = true
+pretty = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
