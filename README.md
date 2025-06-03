@@ -14,7 +14,7 @@ Each module is either a `major` platform/service system or a `minor` tool/utilit
 [`safeLoop.py`](mutil/safeLoop.py) | `minor` | wrapper around Python's complicated async event loop setup/shutdown mechanics to cleanly wait for tasks to go away (perhaps not as useful anymore since `asyncio.run()` now exists since Python 3.7+)
 [`timer.py`](mutil/timer.py) | `minor` | a clean context manager for timing sections of code
 [`dispatch.py`](mutil/dispatch.py) | `Major` | full custom command line generation dispatching system with minimum command prefix matching and showing command line docs from pydoc comments in your implementation classes.
-[`dcache.py`](mutil/dcache.py) | `minor` | TTL disk cache for saving web requests (using `aiohttp`) to disk then returning from disk cache if not expired, or fetching and saving to disk if non-existing or expired.
+[`dcache.py`](mutil/dcache.py) | `minor` | File-based cache for web requests (using `aiohttp`). Caches responses to disk based on daily and custom minute-interval buckets in filenames, reducing redundant fetches.
 [`frame.py`](mutil/frame.py) | `minor` | pretty print a complete pandas dataframe to console using the current console width.
 [`numeric.py`](mutil/numeric.py) | `minor` | number helpers. can round up/down to fixed intervals and also return strings of numbers formatted to a specific min/max number of decimal places. e.g. return 3.3 as 3.30 for price printing, or return 3.6642100003 as 3.6642 for most detailed stock price.
 [`sqlshard.py`](mutil/sqlshard.py) | `minor` | dict/map like thing where keys are saved to disk using N sqlite shards. values are saved as compressed JSON and saved/loaded automatically. can also run queries against all shards with threads (e.g. returning the length of the sharded dict by asking all underlying sqlite dicts their size concurrently). based on some ideas from [`diskcache`](https://github.com/grantjenks/python-diskcache/) for distribution and efficient on-disk serialization.
@@ -22,6 +22,10 @@ Each module is either a `major` platform/service system or a `minor` tool/utilit
 [`wproxy.py`](mutil/wproxy.py) | `Major` | websocket pub/sub proxy for when you need to rebroadcast a single-source websocket stream to multiple clients each with their own subscriptions. Useful for when an upstream service only allows one connection per API key, but you have multiple internal clients each needing their own subscriptions.
 [`s4lru.py`](mutil/s4lru.py) | `Major` | segmented LRU for maintaining LRU metadata and size information. Each datum in the LRU has its size provided by callers, then the eviction process is also over a caller-defined size max, so the LRU can be used to manage any abstract key+size threshold abstraction required.  Performs 10+ million LRU addition/update operations per second when used under pypy.
 [`awsSignatureV4.py`](mutil/awsSignatureV4.py) | `minor` | a user friendly dataclass for generating AWS V4 signatures for anything using the AWS signature hmac format (S3, B2, any other AWS-mocked services). Based on a clean refactoring of the [example aws sig generation code](https://docs.aws.amazon.com/general/latest/gr/sigv4-signed-request-examples.html).
+[`bgtask.py`](mutil/bgtask.py) | `Major` | Advanced asyncio task scheduler with support for delays, repetitions, start/stop times, and pause intervals between runs.
+[`bgwork.py`](mutil/bgwork.py) | `minor` | Utility for running functions in background processes using a managed process pool and task queue.
+[`dualcache.py`](mutil/dualcache.py) | `Major` | Dual-layer cache (in-memory dict + diskcache) for fast reads from memory with disk persistence, including async locking.
+[`expand.py`](mutil/expand.py) | `minor` | String expansion utilities for curly brace patterns (e.g., "prefix{A,B}suffix") and numeric ranges (e.g., "{1..5}").
 
 
 ## aiopipe
@@ -360,4 +364,4 @@ Code formatting is standard `black` defaults.
 
 Tests? Some tests. Maybe more tests in the future. Valid behavior generally verified by usage in other high throughput applications which would be failing if these libraries were broken.
 
-Python version for some components is fixed to 3.7 because we are running under pypy for some installations. This means no nice `while got := await next(): got.process()`, etc. Also no usage of `Final[]` type annotations yet.
+Python version: The library aims for modern Python (3.9+) compatibility. Some modules may use features from Python 3.10+ (e.g., `match` statements, `|` for type unions, `slots=True` on dataclasses). Older pypy versions based on Python 3.7 or 3.8 might not support all modules.
