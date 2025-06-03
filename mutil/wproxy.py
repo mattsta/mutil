@@ -40,7 +40,7 @@ class Client:
     # skip routing and just send everything
     all: bool = False
 
-    def wants(self, routerKeys) -> List[int]:
+    def wants(self, routerKeys) -> List[int]: # type: ignore
         """Returns list of index positions from routerKeys to send to
         client based on expressed interest."""
 
@@ -49,13 +49,13 @@ class Client:
         # our 'keys' is a set of SYMBOL
         # so return the values from routerKeys where the key matches
         # an intersection with our 'keys'
-        return [routerKeys[x] for x in (self.keys & routerKeys.keys())]
+        return [routerKeys[x] for x in (self.keys & routerKeys.keys())] # type: ignore
 
 
-def subFormatPasses(data):
+def subFormatPasses(data, ws):
     """Verify a command has proper formatting (is a list) or exists at all."""
     if not isinstance(data, list):
-        ws.send(orjson.dumps(dict(error="Subscribe items must be a list")))
+        asyncio.create_task(ws.send(orjson.dumps(dict(error="Subscribe items must be a list"))))
         return False
 
     if not data:
@@ -248,7 +248,7 @@ class WProxy:
                     elif cmd == "unsubscribe:all":
                         client.all = False
                     elif cmd == "subscribe":
-                        if not subFormatPasses(data):
+                        if not subFormatPasses(data, ws):
                             continue
 
                         for key in data:
@@ -263,7 +263,7 @@ class WProxy:
 
                             self.pendingSub[key].add(client)
                     elif cmd == "unsubscribe":
-                        if not subFormatPasses(data):
+                        if not subFormatPasses(data, ws):
                             continue
 
                         for key in data:

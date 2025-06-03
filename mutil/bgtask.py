@@ -133,7 +133,7 @@ class BGTask:
                 #       the coroutine executed, so now we have a floating "never awaited"
                 #       coroutine unless we manually .close() it (and repeated .close() events
                 #       even on a completed/closed coroutine works without errors)
-                if active:
+                if active and hasattr(active, "close"):
                     active.close()
 
         # Creating a BGTask instantly runs the task (or, at least starts the BGSchedule for the task)

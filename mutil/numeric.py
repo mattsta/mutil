@@ -29,7 +29,7 @@ def roundnear(
 
     # price already ends in the target round increment, so input price already works;
     # just stop and return original (*NOW Decimal*) price here.
-    rem: float = price.remainder_near(increment)
+    rem: Decimal = price.remainder_near(increment)
     if rem == 0:
         return price
 
