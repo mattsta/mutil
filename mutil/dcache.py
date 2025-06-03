@@ -36,9 +36,7 @@ class FetchCache:
     params: Optional[dict[str, str]] = None  # query params
     filepath: Optional[str] = None
     cacheDir: Union[pathlib.Path, str] = field(
-        default_factory=lambda: pathlib.Path(os.path.abspath(os.getcwd())).with_name(
-            ".cache"
-        )
+        default_factory=lambda: pathlib.Path(".cache")
     )
 
     def __post_init__(self):
