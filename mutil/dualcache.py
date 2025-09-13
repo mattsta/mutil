@@ -75,6 +75,10 @@ class DualCache:
         del self.cacheMem[who]
         del self.cacheDisk[who]
 
+    def __contains__(self, who):
+        """Support 'key in cache' operations using memory cache"""
+        return who in self.cacheMem
+
     def iterkeys(self):
         """match the diskcache API for iterating things"""
         yield from self.cacheMem.keys()
