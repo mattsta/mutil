@@ -3,9 +3,9 @@ import fcntl
 import io
 import os
 import sys
-
+from collections.abc import Awaitable
 from dataclasses import dataclass
-from typing import Any, Awaitable, List, Optional, Tuple, Union
+from typing import Any
 
 import orjson
 
@@ -24,13 +24,13 @@ import orjson
 
 @dataclass
 class AsyncPIPE:
-    readFromFd: Optional[int] = None
+    readFromFd: int | None = None
     headerBytes: int = 4
-    read_fd: Optional[int] = None
-    write_fd: Optional[int] = None
+    read_fd: int | None = None
+    write_fd: int | None = None
 
     @staticmethod
-    def create_pipe() -> Tuple[int, int]:
+    def create_pipe() -> tuple[int, int]:
         read_fd, write_fd = os.pipe()
         for fd in (read_fd, write_fd):
             fcntl.fcntl(fd, fcntl.F_SETFL, os.O_NONBLOCK)
@@ -38,7 +38,7 @@ class AsyncPIPE:
         return read_fd, write_fd
 
     def __post_init__(self) -> None:
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self.loop: asyncio.AbstractEventLoop | None = None
 
         if self.readFromFd:
             self.read_fd = self.readFromFd
@@ -47,10 +47,10 @@ class AsyncPIPE:
             self.read_fd, self.write_fd = self.create_pipe()
 
         # Write futures are: (Future, [data, size-of-written-so-far])
-        self._write_futures: List[Tuple[Awaitable, List[Union[bytes, int]]]] = []
+        self._write_futures: list[tuple[Awaitable, list[bytes | int]]] = []
 
         # Read futures are: (Future, size-to-read)
-        self._read_futures: List[Tuple[Awaitable, int]] = []
+        self._read_futures: list[tuple[Awaitable, int]] = []
 
     def setup(self, log: bool = True) -> None:
         """Note: setup must be run on client process, not on parent of

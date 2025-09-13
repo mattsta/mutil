@@ -64,9 +64,9 @@ class RateLimit:
             if diff < self.bucket_seconds:
                 # failure! sleep until the known-good expiry then loop again.
                 await asyncio.sleep(self.bucket_seconds - diff)
-                assert (
-                    time.monotonic() - oldest >= self.bucket_seconds
-                ), "Sleep was too fast?"
+                assert time.monotonic() - oldest >= self.bucket_seconds, (
+                    "Sleep was too fast?"
+                )
 
             # add this new event to the time-of-submission entries
             self.q.put_nowait(time.monotonic())

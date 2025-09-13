@@ -28,10 +28,12 @@
 # See: http://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
 # This version makes a GET request and passes the signature
 # in the Authorization header.
-import base64, datetime, hashlib, hmac, os, sys
+import datetime
+import hashlib
+import hmac
+import sys
 import urllib.parse
 from dataclasses import dataclass
-from typing import Any, Dict
 
 
 @dataclass
@@ -50,7 +52,7 @@ class SignatureV4:
         self.endpoint = ".".join(parts[1:])  # s3.us-west-2.amazonaws.com
 
         # use empty sha256 hash for body of GET requests
-        self.empty_payload = hashlib.sha256("".encode()).hexdigest()
+        self.empty_payload = hashlib.sha256(b"").hexdigest()
 
     # Key derivation functions. See:
     # http://docs.aws.amazon.com/general/latest/gr/signature-v4-examples.html#signature-v4-examples-python
@@ -66,7 +68,7 @@ class SignatureV4:
         kSigning = self.sign(kService, "aws4_request")
         return kSigning
 
-    def getHeaders(self, method: str, uri: str) -> Dict[str, str]:
+    def getHeaders(self, method: str, uri: str) -> dict[str, str]:
         # Read AWS access key from env. variables or configuration file. Best practice is NOT
         # to embed credentials in code.
 
@@ -189,12 +191,8 @@ if __name__ == "__main__":
     # ************* SEND THE REQUEST *************
     # Run test as:
     #   python -m mutil.awsSignatureV4 access_key secret_key FetchURL
-
-    import time
-
     import requests
     import yarl
-
     from loguru import logger
 
     from .timer import Timer

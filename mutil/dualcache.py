@@ -1,12 +1,11 @@
 import asyncio
 import pathlib
 import shutil
-
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine, Mapping
+from typing import Any
 
 import diskcache  # type: ignore
-from loguru import logger
 
 
 @dataclass(slots=True)

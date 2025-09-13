@@ -1,6 +1,7 @@
 from loguru import logger
-from mutil.timer import Timer
+
 from mutil.s4lru import S4LRU
+from mutil.timer import Timer
 
 # Note: to view output, run as: pytest -s
 
@@ -21,9 +22,9 @@ def test_lru_basic():
                             s.increment(f"b{j}", 2)
                             s.increment(f"c{j}", 3)
                         else:
-                            s.increment(f"a", 1)
-                            s.increment(f"b", 2)
-                            s.increment(f"c", 3)
+                            s.increment("a", 1)
+                            s.increment("b", 2)
+                            s.increment("c", 3)
                     s.flushCounters()
     except:
         logger.exception("whaaaa")

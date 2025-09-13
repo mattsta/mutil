@@ -1,15 +1,12 @@
 """Disk-based cache utils"""
 
-from dataclasses import dataclass, field
-from typing import *
-
 import os
 import pathlib
-
 import time
+from dataclasses import dataclass, field
+from typing import Any
 
 import arrow  # type: ignore
-
 from loguru import logger
 
 
@@ -29,15 +26,13 @@ class FetchCache:
 
     url: str
     filename: str
-    refreshMinutes: Optional[int] = None
+    refreshMinutes: int | None = None
 
     # optional headers for authentication / overrides
-    headers: Optional[dict[str, str]] = None
-    params: Optional[dict[str, str]] = None  # query params
-    filepath: Optional[str] = None
-    cacheDir: Union[pathlib.Path, str] = field(
-        default_factory=lambda: pathlib.Path(".cache")
-    )
+    headers: dict[str, str] | None = None
+    params: dict[str, str] | None = None  # query params
+    filepath: str | None = None
+    cacheDir: pathlib.Path = field(default_factory=lambda: pathlib.Path(".cache"))
 
     def __post_init__(self):
         os.makedirs(self.cacheDir, exist_ok=True)
@@ -60,7 +55,7 @@ class FetchCache:
             )
 
             # TODO: change to diskcache module?
-            with open(self.filepath, "r") as f:
+            with open(self.filepath) as f:
                 return f.read()
 
         logger.opt(depth=1).info(

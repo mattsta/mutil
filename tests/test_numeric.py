@@ -1,6 +1,6 @@
-import mutil.numeric as n
 from decimal import Decimal
 
+import mutil.numeric as n
 from mutil.numeric import ROUND
 
 

@@ -8,24 +8,20 @@ import asyncio
 import inspect
 import multiprocessing
 import os
-
 import sys
-from collections import defaultdict, deque
+from collections import defaultdict
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any
 
 import setproctitle  # type: ignore
-import websockets
-
 from loguru import logger
 
 from . import aioserver
 from .aiopipe import AsyncPIPE
 
 # from threading import Thread
-
 from .foreverloop import ForeverLoop
 
 isLinux = sys.platform == "linux"
@@ -70,29 +66,29 @@ Forward = Enum("Forward", "Hash Broadcast")
 
 @dataclass
 class NetworkCxn:
-    host: Optional[str] = None
-    port: Optional[int] = None
-    path: Optional[str] = None
-    proto: Optional[Server] = None
-    mode: Optional[NetworkMode] = None
-    auth: Optional[Union[str, Callable]] = None
-    pipes: Optional[List[AsyncPIPE]] = None
+    host: str | None = None
+    port: int | None = None
+    path: str | None = None
+    proto: Server | None = None
+    mode: NetworkMode | None = None
+    auth: str | Callable | None = None
+    pipes: list[AsyncPIPE] | None = None
 
     # filter is run by the PARENT connection to check if
     # the further connection wants data forwarded
-    filter: Optional[Callable] = None
+    filter: Callable | None = None
 
     # how to reply to clients if clients send input
-    forwardFromClient: Optional[Callable] = None
+    forwardFromClient: Callable | None = None
 
     # forward is run if filter allows it
-    forwardFromInternal: Optional[Callable] = None
+    forwardFromInternal: Callable | None = None
 
     # optional startup / init function
-    startup: Optional[Callable] = None
+    startup: Callable | None = None
 
     # When server or client is configured, this is the coroutine we use to start it
-    cxn: Optional[Callable] = None
+    cxn: Callable | None = None
 
 
 @dataclass
@@ -107,7 +103,7 @@ class WebSocketCxn(NetworkCxn):
     # Clients have URI instead of host/port, so maybe
     # WebSocketCxn should actually be different classes for
     # clients vs. servers now.
-    uri: Optional[str] = None
+    uri: str | None = None
 
 
 @dataclass
@@ -115,7 +111,7 @@ class Pipe:
     # if 'filter' exists and returns True, the element is allowed on the pipe.
     # else, the element is not sent on this pipe.
     pipe: AsyncPIPE
-    filter: Optional[Callable] = None
+    filter: Callable | None = None
 
     async def asyncSendWithFilter(self, what):
         if (not self.filter) or self.filter(what):
@@ -148,22 +144,22 @@ class Pipe:
 class Runner:
     """Represent something to run in a processing layer"""
 
-    target: Optional[Callable] = None
+    target: Callable | None = None
     #    args: Iterable
     #    kwargs: dict = None
-    howMany: Optional[int] = 1
+    howMany: int | None = 1
 
     # optionally restrict what we allow pipes ot send to us
-    filter: Optional[Callable] = None
+    filter: Callable | None = None
 
     # optional startup / init function
-    startup: Optional[Callable] = None
+    startup: Callable | None = None
 
     # Optional list of fds we inherited from a parent to read from
-    readPipes: Optional[List[int]] = None
+    readPipes: list[int] | None = None
 
-    pipesByWorker: Optional[List[List[AsyncPIPE]]] = None
-    pipesByTarget: List[List[AsyncPIPE]] = field(default_factory=list)
+    pipesByWorker: list[list[AsyncPIPE]] | None = None
+    pipesByTarget: list[list[AsyncPIPE]] = field(default_factory=list)
 
     def setupPipes(self, inboundCount=0):
         # Generate one list of 'inboundCount' pipes for each 'howMany'
@@ -199,7 +195,7 @@ class Runner:
         # (which is actually the full thread count; python doesn't
         # provide a way to get the physical core count without using
         # linux internals...)
-        if self.howMany == None:
+        if self.howMany is None:
             self.howMany = os.cpu_count()
 
         # also, if we have explict read pipes, we use one process per
@@ -210,8 +206,8 @@ class Runner:
 
 @dataclass
 class Network:
-    networks: Optional[Sequence[NetworkCxn]] = None
-    pipesByWorker: Optional[List[List[AsyncPIPE]]] = None
+    networks: Sequence[NetworkCxn] | None = None
+    pipesByWorker: list[list[AsyncPIPE]] | None = None
 
     def newClientCB(self, reader, writer):
         pass
@@ -295,27 +291,27 @@ class NetworkRunner(Network, Runner):
     """
 
     def __post_init__(self):
-        assert self.networks, f"Your NetworkRunner has no networks!"
+        assert self.networks, "Your NetworkRunner has no networks!"
 
 
 @dataclass
 class Process:
     id: int = -1
-    mode: Optional[NetworkMode] = None
-    server: Optional[Network] = None
-    forwardFromInternal: Optional[Callable] = None
-    forwardFromClient: Optional[Callable] = None
-    inbound: Optional[Iterable[AsyncPIPE]] = None
-    outbound: Optional[Iterable[AsyncPIPE]] = None
+    mode: NetworkMode | None = None
+    server: Network | None = None
+    forwardFromInternal: Callable | None = None
+    forwardFromClient: Callable | None = None
+    inbound: Iterable[AsyncPIPE] | None = None
+    outbound: Iterable[AsyncPIPE] | None = None
 
     # startup procedure
     # "reconnect" is just beforeConnect -> server -> afterConnect again
-    beforeConnect: Optional[Callable] = None
-    afterConnect: Optional[Callable] = None
-    startup: Optional[Callable] = None
+    beforeConnect: Callable | None = None
+    afterConnect: Callable | None = None
+    startup: Callable | None = None
 
     # user state holder for anything user wants to remember across callbacks
-    state: Dict[Any, Any] = field(default_factory=lambda: defaultdict(list))
+    state: dict[Any, Any] = field(default_factory=lambda: defaultdict(list))
 
 
 def dataflowProcess(p: Process):
@@ -360,9 +356,9 @@ def dataflowProcess(p: Process):
         for pipe in list(p.inbound) + list(p.outbound):
             pipe.pipe.setup()
 
-        assert not (
-            p.server and (p.inbound and p.outbound)
-        ), "Server layers can't have inbound and outbound pipes at the same time!"
+        assert not (p.server and (p.inbound and p.outbound)), (
+            "Server layers can't have inbound and outbound pipes at the same time!"
+        )
 
         # If this is a server level, we run the server directly and the
         # server spawns new async tasks for each client based on a
@@ -396,7 +392,7 @@ def dataflowProcess(p: Process):
             annos = aspec.annotations
             secondArgName = aspec.args[1]
             typeOfSecond = annos.get(secondArgName)
-            if typeOfSecond == bytes:
+            if typeOfSecond is bytes:
                 # requested binary input so return the data bytes directly
                 for i in p.inbound:
                     fl.addRunner(i.pipe.readActual)
@@ -415,7 +411,7 @@ def dataflowProcess(p: Process):
                     got = await got
                     try:
                         await p.forwardFromInternal(p, got)
-                    except Exception as e:
+                    except Exception:
                         logger.exception(
                             f"Error while iterating async worker? {p}, {got}"
                         )
@@ -425,7 +421,7 @@ def dataflowProcess(p: Process):
                     got = await got
                     try:
                         p.forwardFromInternal(p, got)
-                    except Exception as e:
+                    except Exception:
                         logger.exception(f"Error while iterating worker? {p}, {got}")
 
     async def startProcessing():
@@ -469,7 +465,7 @@ class Dataflow:
     """
 
     name: str
-    topology: Sequence[Union[Network, Runner]]
+    topology: Sequence[Network | Runner]
 
     #    inbound: Network
 

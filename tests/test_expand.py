@@ -1,4 +1,3 @@
-import pytest
 from mutil.expand import expand_string_curly_braces as expand_string
 
 # (thanks to gpt-4 for automated test case generation)

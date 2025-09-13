@@ -4,9 +4,9 @@ import asyncio
 import datetime
 import inspect
 import pprint
-
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Coroutine, Final, Mapping
+from typing import Any, Final
 
 from loguru import logger
 
@@ -39,7 +39,7 @@ class BGSchedule:
     runcount: int = 0
 
     # default timezone for objects
-    tz: datetime.tzinfo = datetime.timezone.utc
+    tz: datetime.tzinfo = datetime.UTC
 
     def __post_init__(self) -> None:
         self.created = self.now()
@@ -87,9 +87,9 @@ class BGTask:
                     CREATE_COROUTINE = True
                 else:
                     CREATE_COROUTINE = False
-                    assert (
-                        self.schedule.runtimes <= 1
-                    ), f"For repeating events, you must provide a coroutine _function_ instead of a single coroutine"
+                    assert self.schedule.runtimes <= 1, (
+                        "For repeating events, you must provide a coroutine _function_ instead of a single coroutine"
+                    )
                     active = self.coroutine
 
                 runAfter = (self.schedule.start - self.schedule.now()).total_seconds()

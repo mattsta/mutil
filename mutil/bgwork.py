@@ -3,7 +3,8 @@
 import multiprocessing
 import os
 import queue
-from typing import Any, Callable, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -19,7 +20,7 @@ def _process_task_executor(
     """
     while True:
         try:
-            task_args: Optional[Tuple[Any, ...]] = task_queue.get()
+            task_args: tuple[Any, ...] | None = task_queue.get()
 
             if task_args is None:  # Sentinel value to signal termination
                 task_queue.task_done()
@@ -73,9 +74,9 @@ class BackgroundProcessPool:
 
     def __init__(
         self,
-        target_function: Optional[Callable[..., Any]],
+        target_function: Callable[..., Any] | None,
         cpu_multiple: float = 1.0,
-        max_workers: Optional[int] = None,
+        max_workers: int | None = None,
     ):
         """
         Initializes the BackgroundProcessPool.
@@ -91,7 +92,7 @@ class BackgroundProcessPool:
         self.cpu_multiple = cpu_multiple
         self.max_workers = max_workers
 
-        self._task_queue: Optional[multiprocessing.JoinableQueue] = None
+        self._task_queue: multiprocessing.JoinableQueue | None = None
         self._processes: list[multiprocessing.Process] = []
         self._noop_submit = lambda *args, **kwargs: None
 

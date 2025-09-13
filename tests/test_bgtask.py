@@ -1,9 +1,9 @@
 import asyncio
-from mutil.bgtask import BGSchedule, BGTask, BGTasks
-from loguru import logger
 
 import pytest
-import pytest_asyncio
+from loguru import logger
+
+from mutil.bgtask import BGSchedule, BGTasks
 
 
 def test_create():

@@ -1,11 +1,9 @@
-from dataclasses import dataclass, field
-from typing import *
-import enum
-
 # parse arguments while retaining quoted things as single fields
 import shlex
-
 from collections import Counter, defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any, Final
 
 from loguru import logger
 
@@ -15,17 +13,17 @@ class DArg:
     """A dispatch argument with automatic type conversion and validation."""
 
     name: str
-    convert: Optional[Callable[[Any], Any]] = None
-    verify: Optional[Callable[[Any], bool]] = None
+    convert: Callable[[Any], Any] | None = None
+    verify: Callable[[Any], bool] | None = None
 
     # error message if validation fails
-    errmsg: Optional[str] = None
+    errmsg: str | None = None
 
     # final converted / validated input value
-    val: Optional[Any] = None
+    val: Any | None = None
 
     # self-documentation for parameter
-    desc: Optional[str] = None
+    desc: str | None = None
 
     # if value missing, allow default. Only works for last elements currently.
     # TODO: enable named parameter lists too.
@@ -405,6 +403,6 @@ class Dispatch:
                         rest.append(row)
 
                 if rest:
-                    print(f"Other:\b\t-", "\n\t- ".join(sorted(rest)))
+                    print("Other:\b\t-", "\n\t- ".join(sorted(rest)))
 
         return None

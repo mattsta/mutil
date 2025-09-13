@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mutil"
-version = "2.3.1"
+version = "2.4.5"
 description = "mutil — matt's utilities"
 authors = ["Matt Stancliff <matt@genges.com>"]
 license = "Apache-2.0"
@@ -17,6 +17,7 @@ python-prctl = {version = "^1.8.1", platform = "linux"}
 # NOTE: be careful with `poetry add orjson@latest` to update because it
 #       will remove this entire check and just reinstall orjson as a top-level
 #       dependency without any conditional matching.
+diskcache = "^5.6.3"
 [tool.poetry.dependencies.orjson]
 # pin orjson to cpython only since it's not supported under pypy
 # (and pypy has better JIT-powered JSON anyway)
@@ -30,6 +31,7 @@ types-requests = "^2.27.10"
 types-aiofiles = "^24.1.0"
 pytest-asyncio = "^0.24.0"
 pytest-xdist = "^3.6.1"
+ruff = "^0.13.0"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
@@ -42,3 +44,15 @@ pretty = true
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+extend-select = [
+  # convert legacy python syntax to modern syntax
+  "UP",
+  # isort imports
+  "I",
+]
+ignore = ["E402"] # Ignore Module level import not at top of file

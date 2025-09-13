@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import sqlite3
 import typing
 from collections import Counter
 from dataclasses import dataclass, field
-
 from threading import Lock
-from typing import Any, Callable
 
 
 @dataclass(slots=True)
@@ -72,8 +68,8 @@ class CacheLevel:
     This is a fixed cardinality object (per active LRU).
     """
 
-    prev: "CacheLevel" | None = None
-    next: "CacheLevel" | None = None
+    prev: CacheLevel | None = None
+    next: CacheLevel | None = None
     head: CacheNode | None = None
     tail: CacheNode | None = None
     level: int = 0

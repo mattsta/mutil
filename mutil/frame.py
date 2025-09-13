@@ -1,10 +1,8 @@
 """Pandas Utilities"""
 
 import shutil
-from typing import Optional
 
 import pandas as pd  # type: ignore
-
 from loguru import logger
 
 
@@ -17,9 +15,7 @@ def setupLogger():
     logger.level("FRAME", no=25)
 
 
-def printFrame(
-    df, caption: str = "", headers: Optional[int] = None, level: str = "FRAME"
-):
+def printFrame(df, caption: str = "", headers: int | None = None, level: str = "FRAME"):
     """Print pandas dataframe to logger.
 
     Output can be prefixed with a description using 'caption'
@@ -65,5 +61,5 @@ def printFrame(
                     logger.opt(depth=1).log(level, f"\n{df[i : i + step]}")
             else:
                 logger.opt(depth=1).log(level, f"\n{df}")
-        except Exception as e:
+        except Exception:
             logger.exception("Got excepts?")

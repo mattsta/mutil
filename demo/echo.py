@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-from mutil import dataflow, safeLoop
-import websockets
-
 import asyncio
 
 import orjson
 from loguru import logger
+
+from mutil import dataflow
 
 
 async def inboundForward(p, blob, client):

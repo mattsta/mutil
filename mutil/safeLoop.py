@@ -11,7 +11,6 @@ except:
 
 import asyncio
 import collections
-
 import sys
 
 
@@ -55,7 +54,7 @@ def safeLoop(main, customloop=uvloop):
 
     try:
         loop.run_forever()
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         # Somebody Ctrl-C'd while event loop was waiting, so we want to exit
         shutdown()
     finally:

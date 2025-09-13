@@ -2,8 +2,7 @@
 
 import itertools
 import re
-
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def expand_string_numeric(part: str) -> Iterable[str]:

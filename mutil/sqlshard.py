@@ -1,20 +1,13 @@
 """Shard SQLite DBs by key but allow range searches"""
 
-import os
+import concurrent.futures
 import pathlib
 import sqlite3
-
-from collections import defaultdict
+import zlib
 from dataclasses import dataclass, field
+from typing import Any, Sequence
 
 import orjson
-from typing import *
-
-import concurrent.futures
-
-import zlib
-
-from loguru import logger
 
 # TODO: implementing deleting by ranges...
 # TODO: allow adjustable range column instead of defaulting to the second element
@@ -31,7 +24,7 @@ class SQLShard:
     query using either equals, GT, LT, or GT AND LT operations."""
 
     shards: int = 16
-    path: Union[str, pathlib.Path] = field(default_factory=pathlib.Path)
+    path: str | pathlib.Path = field(default_factory=pathlib.Path)
     keylen: int = 3
     shardidx: int = 0
 

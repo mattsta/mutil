@@ -6,27 +6,18 @@ Also has helper functions for writing directly into and out from
 files using aiofiles and sendfile helpers."""
 
 import asyncio
-import fcntl
 import hmac
 import inspect
-import io
 import json
 import os
 import platform
-
 import socket
-from collections import defaultdict
+from collections.abc import AsyncIterable, Awaitable, Callable
 from dataclasses import dataclass, field
-from inspect import getmembers
 from multiprocessing import AuthenticationError
-
 from pathlib import Path
 from typing import (
     Any,
-    AsyncIterable,
-    Awaitable,
-    Callable,
-    Iterable,
 )
 
 import aiofiles
@@ -35,7 +26,6 @@ import aiofiles.os
 # for making temp names easily without asking the OS
 import ulid  # type: ignore
 import websockets
-
 from loguru import logger
 
 if platform.system() == "Linux":
@@ -54,9 +44,9 @@ CHALLENGE = b"#CHALLENGE#"
 WELCOME = b"#WELCOME#"
 FAILURE = b"#FAILURE#"
 
-assert len(WELCOME) == len(
-    FAILURE
-), "We need welcome and failure to be same length for the network processing..."
+assert len(WELCOME) == len(FAILURE), (
+    "We need welcome and failure to be same length for the network processing..."
+)
 
 # 64 byte (512-bit) digests
 HASH_ALGO = "blake2b"
@@ -293,7 +283,7 @@ class PickleCxn:
         """Return entire data record from stream using header-prefix length"""
         try:
             dataSizeAsEncodedBytes = await self.reader.readexactly(self.headerBytes)
-        except asyncio.IncompleteReadError as e:
+        except asyncio.IncompleteReadError:
             if self.reader.at_eof():
                 return None
 
@@ -306,7 +296,7 @@ class PickleCxn:
             dataSizeAsEncodedBytes = await asyncio.wait_for(
                 self.reader.readexactly(self.headerBytes), self.timeoutHeader
             )
-        except asyncio.IncompleteReadError as e:
+        except asyncio.IncompleteReadError:
             # don't throw a noisy exception if this is a clean shutdown
             if self.reader.at_eof():
                 raise ConnectionClosedOK
@@ -442,7 +432,7 @@ class PickleCxn:
                         # TODO: exception vs error return; caller can't tell how much was sent
                         if remainingData > 0:
                             # jumps to exception for removing the tempfile then returns 0
-                            raise IOError(
+                            raise OSError(
                                 (
                                     remainingData,
                                     f"Incomplete write? Got EOF with {remainingData} bytes remaining",
@@ -609,7 +599,7 @@ class Server:
     authKey: bytes = field(default=b"", repr=False)
 
     def __post_init__(self):
-        assert authKey, f"Need an auth key to auth!"
+        assert self.authKey, "Need an auth key to auth!"
 
     async def listen(self):
         await self.server
@@ -909,7 +899,7 @@ class ClientWebSocket(Client):
                             # 'worker' should never return unless it wants
                             # the connection to completely disconnect without a
                             # reconnect attempt.
-                            if await worker(state, websocket) == True:
+                            if await worker(state, websocket) is True:
                                 logger.warning(
                                     "[{} :: {}] Returning from websocket worker...",
                                     websocket.local_address,
@@ -917,10 +907,7 @@ class ClientWebSocket(Client):
                                 )
                                 return
                             logger.info("Failed worker? {}", worker)
-                    except (
-                        asyncio.TimeoutError,
-                        websockets.ConnectionClosed,
-                    ) as e:
+                    except (TimeoutError, websockets.ConnectionClosed) as e:
                         logger.error("WS error: {}", e)
                         try:
                             # do we need a manual ping pong?
@@ -949,6 +936,6 @@ class ClientWebSocket(Client):
 
                 sys.exit(-1)
                 break
-            except Exception as e:
+            except Exception:
                 logger.exception("Websocket session exception!")
                 continue

@@ -2,16 +2,14 @@ import asyncio
 
 # https://docs.python.org/3/library/collections.abc.html
 import collections.abc
-
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import orjson
 import websockets
-from typing import *
-
 from loguru import logger
-
 
 # By default the websocket client will trigger exceptions if it
 # doesn't get a ping every 5 seconds which is too restrictive
@@ -40,7 +38,7 @@ class Client:
     # skip routing and just send everything
     all: bool = False
 
-    def wants(self, routerKeys) -> List[int]: # type: ignore
+    def wants(self, routerKeys) -> List[int]:  # type: ignore
         """Returns list of index positions from routerKeys to send to
         client based on expressed interest."""
 
@@ -49,13 +47,15 @@ class Client:
         # our 'keys' is a set of SYMBOL
         # so return the values from routerKeys where the key matches
         # an intersection with our 'keys'
-        return [routerKeys[x] for x in (self.keys & routerKeys.keys())] # type: ignore
+        return [routerKeys[x] for x in (self.keys & routerKeys.keys())]  # type: ignore
 
 
 def subFormatPasses(data, ws):
     """Verify a command has proper formatting (is a list) or exists at all."""
     if not isinstance(data, list):
-        asyncio.create_task(ws.send(orjson.dumps(dict(error="Subscribe items must be a list"))))
+        asyncio.create_task(
+            ws.send(orjson.dumps(dict(error="Subscribe items must be a list")))
+        )
         return False
 
     if not data:
@@ -94,18 +94,18 @@ class Server:
 
 @dataclass
 class WProxy:
-    listen: Tuple[str, int]
+    listen: tuple[str, int]
     server: Server  # upstream server connection
 
     # After upstream connect, run method if user needs to provide
     # authentication / setup / accounting / etc
-    onConnect: Optional[Callable] = None
+    onConnect: Callable | None = None
 
     # Returns a list of (key, idx) tuples from the upstream received object to use for
     # routing upstream objects to clients subscribed to specific keys.
     # Note: if client is subscribed to '*', then no key filtering is
     #       applied to the client.
-    routerKeys: Optional[Callable] = None
+    routerKeys: Callable | None = None
 
     # Function to take the previous subscribe list and broken out sets
     # of new symbols to subscribe and unsubscribe then perform the required
@@ -113,7 +113,7 @@ class WProxy:
     # It receives full prev and breakout sub/unsub because some services
     # only accept "full subscribe list" upates instead of allowing per-key
     # unsub removals or per-key sub additions.
-    updateSubscribe: Optional[Callable] = None
+    updateSubscribe: Callable | None = None
 
     # TODO: create a custom 'set' subset where .add and .remove are subclassed
     # to queue additions and removals if set is currently being iterated over.
@@ -153,7 +153,7 @@ class WProxy:
         # if this is a reconnect, we need to re-subscribe too...
         await self.upstreamResubscribe()
 
-    async def upstreamResubscribe(self, prev: Optional[dict[str, str]] = None):
+    async def upstreamResubscribe(self, prev: dict[str, str] | None = None):
         if self.updateSubscribe:
             currentkeys = self.subscribed.keys()
 
