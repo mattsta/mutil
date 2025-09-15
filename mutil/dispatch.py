@@ -3,7 +3,7 @@ import shlex
 from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Final
+from typing import Any, Final, Mapping, Type
 
 from loguru import logger
 
