@@ -353,25 +353,56 @@ class Dispatch:
             return None
 
         def printhelp(long=True):
-            logger.info(
-                "Command: {} {}",
-                wholecmd,
-                " ".join(
-                    [
-                        (
-                            f'[{a.name} default="{a.default}"]'
-                            if a.default is not None
-                            else f"[{a.name}]"
-                        )
-                        for a in iop.argmap()
-                    ]
-                ),
-            )
+            # Enhanced help display with rich metadata
+            args = iop.argmap()
+
+            # Command signature
+            signature_parts = []
+            for a in args:
+                if a.isRest():
+                    signature_parts.append(f"[*{a.usename()}]")
+                elif a.default is not None:
+                    signature_parts.append(f'[{a.name} default="{a.default}"]')
+                else:
+                    signature_parts.append(f"<{a.name}>")
+
+            logger.info("Command: {} {}", wholecmd, " ".join(signature_parts))
 
             if long:
-                # Only print doc string if it isn't the default repr() for the class
+                # Command description
                 if op.__doc__ and "state: Any = None" not in op.__doc__:
-                    logger.info("{} :: {}", wholecmd, op.__doc__.strip())
+                    logger.info("[{}] :: {}", wholecmd, op.__doc__.strip())
+
+                # Detailed argument information
+                if args and any(a.desc or a.errmsg for a in args):
+                    logger.info("Arguments:")
+
+                    for a in args:
+                        arg_info = []
+
+                        # Argument name and type
+                        if a.isRest():
+                            arg_info.append(f"  *{a.usename()} (rest arguments)")
+                        else:
+                            arg_info.append(f"  {a.name}")
+
+                        # Description
+                        if a.desc:
+                            arg_info.append(f"    Description: {a.desc}")
+
+                        # Default value
+                        if a.default is not None:
+                            arg_info.append(f"    Default: {a.default}")
+
+                        # Error message as hint
+                        if a.errmsg:
+                            arg_info.append(f"    Error: {a.errmsg}")
+
+                        # Rest argument explanation
+                        if a.isRest():
+                            arg_info.append("    Consumes all remaining arguments")
+
+                        logger.info("\n".join(arg_info))
 
         if op:
             # create operation instance from command name retrieved above
