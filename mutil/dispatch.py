@@ -1,9 +1,9 @@
 # parse arguments while retaining quoted things as single fields
 import shlex
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Final, Mapping, Type
+from typing import Any, Final
 
 from loguru import logger
 
@@ -152,16 +152,17 @@ class Op:
         #  - i.e. allow missing arguments if all missing args have defaults.
         # NOTE: minor bug here if the command only has one argument, but it's a *star argument, then we can't detect "missing arguments."
         #       Perhaps we need an option to set *star arguments to required=True so we can require something there?
-        if lenDiff < 0 and not all(
-            [arg.default for arg in amap[len(amap) - reduceByStar :]]
-        ):
-            # but don't fail if the last argument is a "consume rest as list" arguments,
-            # meaning technically this command can also accept the '*' param being empty.
-            logger.error(
-                "Not enough arguments provided! Expected: {}",
-                " ".join([a.name for a in amap]),
-            )
-            return False
+        if lenDiff < 0:
+            # Check if missing arguments have defaults
+            missing_args = amap[len(amap) + lenDiff :]
+            if not all([arg.default for arg in missing_args]):
+                # but don't fail if the last argument is a "consume rest as list" arguments,
+                # meaning technically this command can also accept the '*' param being empty.
+                logger.error(
+                    "Not enough arguments provided! Expected: {}",
+                    " ".join([a.name for a in amap]),
+                )
+                return False
 
         # Now iterate all expected arguments and extract them by index
         for idx, name in enumerate(amap):
@@ -218,11 +219,17 @@ class Dispatch:
     methods."""
 
     # user input of either {name: callable} or {category: {name: callable}} mappings
-    opcodes: Mapping[str, Type[Op] | Mapping[str, Type[Op]]]
+    opcodes: Mapping[str, type[Op] | Mapping[str, type[Op]]]
 
     # post-processed version of 'opcodes' for actual executing of things
     # (a flat version of every dis-ambiguated command name without category details)
-    totalOps: Mapping[str, Type[Op]] = field(init=False)
+    totalOps: Mapping[str, type[Op]] = field(init=False)
+
+    # exact full-name to operation mapping (always present for every command)
+    # (used for matching full-name substring matches so commands aren't all
+    #  intercepted by the prefix match system. i.e. if you have command "help" and "helper", before
+    #  this check, you could never run "help" because it would be an ambiguous prefix match.)
+    fullOps: Mapping[str, type[Op]] = field(init=False)
 
     cmdcompletion: dict[str, list[str]] = field(
         default_factory=lambda: defaultdict(list)
@@ -236,6 +243,7 @@ class Dispatch:
 
         def minimizeOperationsTable():
             totalOp = {}
+            fullOp = {}
 
             # Count all prefixes of all commands so we can
             # determine if we have conflicting prefixes.
@@ -263,10 +271,12 @@ class Dispatch:
                     self.cmdsByGroup.append(cg)
 
                     for kkey in val.keys():
+                        fullOp[kkey] = val[kkey]
                         populateForKey(kkey)
                         self.cmds.append(kkey)
                 else:
                     # else, we have an op itself at the top level.
+                    fullOp[key] = val
                     populateForKey(key)
                     self.cmds.append(key)
                     self.cmdsByGroup.append(key)
@@ -295,6 +305,7 @@ class Dispatch:
             # Replace user provided opcode table with our complete
             # non-conflicting dispatch lookup table.
             self.totalOps = totalOp
+            self.fullOps = fullOp
             self.cmds = sorted(self.cmds)
 
         minimizeOperationsTable()
@@ -314,11 +325,21 @@ class Dispatch:
             gethelp = True
             cmd = cmd[:-1]
 
-        op = self.totalOps.get(cmd)
+        # Check for exact match first, then fall back to prefix match
+        op = self.fullOps.get(cmd) or self.totalOps.get(cmd)
+
+        # Set wholecmd appropriately
+        if cmd in self.fullOps:
+            # Exact match - cmd is already the full command name
+            wholecmd = cmd
+        elif cmd in self.totalOps:
+            # Prefix match - get the full command name
+            wholecmd = self.cmdcompletion[cmd][0]
+        else:
+            # No match at all
+            wholecmd = cmd
 
         if (not op) and (cmd in self.totalOps):
-            wholecmd = self.cmdcompletion[cmd][0]
-
             # If partial name given, show full command too.
             # If full gommand already given, don't duplicate it.
             opdesc = f"{cmd} :: {wholecmd}" if cmd != wholecmd else wholecmd
@@ -355,10 +376,6 @@ class Dispatch:
         if op:
             # create operation instance from command name retrieved above
             iop = op(state, oargs)
-
-            # We already have a disambiguated command here, so we can retrieve
-            # the full name directly.
-            wholecmd = self.cmdcompletion[cmd][0]
 
             if gethelp:
                 printhelp()
