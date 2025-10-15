@@ -4,8 +4,9 @@ import concurrent.futures
 import pathlib
 import sqlite3
 import zlib
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any
 
 import orjson
 
