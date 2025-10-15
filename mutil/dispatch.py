@@ -65,7 +65,7 @@ class DArg:
         if self.convert:
             try:
                 final = self.convert(x)
-            except:
+            except Exception:
                 return False
 
         # Verification requested? Verify.
@@ -75,7 +75,7 @@ class DArg:
                     self.val = final
                 else:
                     return False
-            except:
+            except Exception:
                 return False
         else:
             # No verification requested? Just set original.
@@ -141,6 +141,24 @@ class Op:
         # use argmap to populate instance variables given an automatic specification
         amap: Final = self.argmap()
 
+        # Enforce positional argument ordering:
+        # Once a positional argument defines a default, all subsequent positional
+        # arguments (before any trailing *rest) must also define a default.
+        if amap:
+            end_idx = len(amap) - (1 if amap[-1].isRest() else 0)
+            seen_default = False
+            for pos in range(end_idx):
+                arg = amap[pos]
+                has_default = arg.default is not None
+                if has_default:
+                    seen_default = True
+                elif seen_default:
+                    logger.error(
+                        "Invalid argument ordering: required argument '{}' follows an argument with a default.",
+                        arg.name,
+                    )
+                    return False
+
         # fail up front if required number of arguments is more than provided number of arguments
         # Allow '*' arguments to be empty:
         reduceByStar = int(amap[-1].isRest() if amap else False)
@@ -153,9 +171,14 @@ class Op:
         # NOTE: minor bug here if the command only has one argument, but it's a *star argument, then we can't detect "missing arguments."
         #       Perhaps we need an option to set *star arguments to required=True so we can require something there?
         if lenDiff < 0:
-            # Check if missing arguments have defaults
-            missing_args = amap[len(amap) + lenDiff :]
-            if not all([arg.default for arg in missing_args]):
+            # We are missing some required positional arguments.
+            # Consider only the required positional slice (exclude trailing *rest if present)
+            required_count = len(amap) - reduceByStar
+            # Missing arguments are within the required positional range starting at the first missing index
+            first_missing_idx = len(self.args__)
+            missing_args = amap[first_missing_idx:required_count]
+            # Allow if and only if all missing required args define a default (None means "no default")
+            if not all((arg.default is not None) for arg in missing_args):
                 # but don't fail if the last argument is a "consume rest as list" arguments,
                 # meaning technically this command can also accept the '*' param being empty.
                 logger.error(
@@ -325,7 +348,10 @@ class Dispatch:
             gethelp = True
             cmd = cmd[:-1]
 
+        # Use the operation match using either exact match or prefix match
         # Check for exact match first, then fall back to prefix match
+        # (allows commpands to be prefixes of other commands and still run without
+        #  triggering the "not-specific-enough prefix" match warnings)
         op = self.fullOps.get(cmd) or self.totalOps.get(cmd)
 
         # Set wholecmd appropriately
@@ -343,19 +369,12 @@ class Dispatch:
             # If partial name given, show full command too.
             # If full gommand already given, don't duplicate it.
             opdesc = f"{cmd} :: {wholecmd}" if cmd != wholecmd else wholecmd
-            logger.error(
-                "[{}] Operation exists but has no implementation!",
-                opdesc,
-                cmd,
-                wholecmd,
-            )
+            prefix = f"[{opdesc}]" if not oargs else f"[{opdesc} :: {oargs}]"
+            logger.error("{} Operation exists but has no implementation!", prefix)
 
             return None
 
         def printhelp(long=True):
-            # Enhanced help display with rich metadata
-            args = iop.argmap()
-
             # Command signature
             signature_parts = []
             for a in args:
@@ -366,47 +385,53 @@ class Dispatch:
                 else:
                     signature_parts.append(f"<{a.name}>")
 
-            logger.info("Command: {} {}", wholecmd, " ".join(signature_parts))
+            # Get parameter names from argument map for prefix
+            param_names = []
+            if args:
+                for a in args:
+                    if a.isRest():
+                        param_names.append(f"*{a.usename()}")
+                    else:
+                        param_names.append(a.name)
+            param_str = " ".join(param_names)
+            prefix = f"[{wholecmd} :: {param_str}]" if param_str else f"[{wholecmd}]"
+
+            logger.info(
+                "{} Command: {} {}", prefix, wholecmd, " ".join(signature_parts)
+            )
 
             if long:
                 # Command description
                 if op.__doc__ and "state: Any = None" not in op.__doc__:
-                    logger.info("[{}] :: {}", wholecmd, op.__doc__.strip())
+                    logger.info("{} {}", prefix, op.__doc__.strip())
 
                 # Detailed argument information
                 if args and any(a.desc or a.errmsg for a in args):
-                    logger.info("Arguments:")
+                    logger.info("[{}] Arguments:", wholecmd)
 
                     for a in args:
-                        arg_info = []
-
-                        # Argument name and type
-                        if a.isRest():
-                            arg_info.append(f"  *{a.usename()} (rest arguments)")
-                        else:
-                            arg_info.append(f"  {a.name}")
+                        # Create prefix for this specific argument
+                        arg_name = f"*{a.usename()}" if a.isRest() else a.name
+                        arg_prefix = f"[{wholecmd} :: {arg_name}]"
 
                         # Description
                         if a.desc:
-                            arg_info.append(f"    Description: {a.desc}")
+                            logger.info("{}: {}", arg_prefix, a.desc)
 
                         # Default value
                         if a.default is not None:
-                            arg_info.append(f"    Default: {a.default}")
+                            logger.info("{} Default value: {}", arg_prefix, a.default)
 
                         # Error message as hint
                         if a.errmsg:
-                            arg_info.append(f"    Error: {a.errmsg}")
-
-                        # Rest argument explanation
-                        if a.isRest():
-                            arg_info.append("    Consumes all remaining arguments")
-
-                        logger.info("\n".join(arg_info))
+                            logger.info("{} Error: {}", arg_prefix, a.errmsg)
 
         if op:
             # create operation instance from command name retrieved above
             iop = op(state, oargs)
+
+            # arguments for operation discovered
+            args = iop.argmap()
 
             if gethelp:
                 printhelp()
@@ -426,7 +451,18 @@ class Dispatch:
                 return await iop.run()
 
             # print generic error message
-            logger.error("[{}] Argument validation failed: {}", wholecmd, oargs)
+            # Get parameter names from argument map for prefix
+            param_names = []
+            if args:
+                for a in args:
+                    if a.isRest():
+                        param_names.append(f"*{a.usename()}")
+                    else:
+                        param_names.append(a.name)
+            param_str = " ".join(param_names)
+            prefix = f"[{wholecmd} :: {param_str}]" if param_str else f"[{wholecmd}]"
+
+            logger.error("{} Argument validation failed: {}", prefix, oargs)
 
             # also print reminder of command arguments, but without full doc string.
             printhelp(long=False)
