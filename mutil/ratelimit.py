@@ -1,32 +1,36 @@
 import asyncio
 import time
+from collections import deque
 from dataclasses import dataclass, field
 
 
 @dataclass
 class RateLimit:
-    """Provides a coroutine to `await` which will block if
-    called more than 'rate' times in 'bucket_seconds' seconds.
+    """Async sliding-window rate limiter.
 
-    Accuracy for rate limit intervals is the accuracy of time.monotonic()
-    (typically nanosecond accuracy).
+    Purpose: Allow at most `rate` events in any sliding window of
+    `bucket_seconds` seconds. If the limit would be exceeded, callers of
+    `await guard()` will wait until at least one prior event expires from the
+    window, then proceed.
 
-    NOTE: We use a queue of each requested timestamp to figure out
-          the sliding windows for when requests can resume again.
+    Guarantees:
+    - No more than `rate` events are allowed in any continuous
+      `bucket_seconds` interval (sliding window semantics).
+    - Callers that would exceed the limit will sleep up to the exact time
+      needed for the oldest in-window event to expire, then continue.
+    - Behavior is deterministic relative to `time.monotonic()`.
 
-          So if you set your rate to 20 million per second, we'll store
-          20 million timestamps.
+    Implementation notes:
+    - A deque stores timestamps of admitted events. It is purged of timestamps
+      older than `bucket_seconds` before admitting a new event.
+    - An asyncio.Lock protects concurrent access so multiple tasks can call
+      `guard()` safely without overshooting the limit.
 
-          Under normal conditions your rate limits will be like 90 in 15 minutes
-          or 1 per second or 300 per 5 minutes, etc, so the memory used by
-          the timestamps in the queue won't be overwhelming.
-
-
-    Example of rate limit 1 print every 5 seconds:
-    rl = RateLimit(1, 5)
-    while True:
-        await rl.guard()
-        print("A log line, once every 5 seconds...")
+    Example: rate limit 1 print every 5 seconds
+        rl = RateLimit(1, 5)
+        while True:
+            await rl.guard()
+            print("A log line, once every 5 seconds...")
     """
 
     # default maximum requests in the bucket (rate 120 with bucket 60 is "120 requests per minute")
@@ -35,15 +39,14 @@ class RateLimit:
     # default temporal duration of the bucket in seconds
     bucket_seconds: int = 60
 
-    # last time bucket was filled
+    # last time bucket was filled (unused, kept for compatibility)
     updated: float = field(default_factory=time.monotonic)
 
     def __post_init__(self):
-        # current available capacity
-        # We record the time of each request as a queue entry, then
-        # remove them as their usage expiration goes away.
-        # (no reason this is asyncio.queue, could be regular queue actually)
-        self.q = asyncio.Queue(maxsize=self.rate)
+        # Sliding window of request timestamps
+        self._timestamps: deque[float] = deque(maxlen=self.rate)
+        # Protects concurrent access to timestamps
+        self._lock = asyncio.Lock()
 
     async def guard(self):
         """Return immediately if not all capacity is used.
@@ -53,26 +56,29 @@ class RateLimit:
         # if we eat all our tokens, we must wait a MINIMUM of
         # self.started + bucket_seconds before continuing.
 
-        if self.q.full():
-            # Remove the oldest entry then calculate the next time we
-            # can do a single request.
-            oldest = self.q.get_nowait()
+        waited = False
+        while True:
+            async with self._lock:
+                now = time.monotonic()
+                # purge expired timestamps
+                while (
+                    self._timestamps
+                    and (now - self._timestamps[0]) >= self.bucket_seconds
+                ):
+                    self._timestamps.popleft()
 
-            now = time.monotonic()
-            diff = now - oldest
+                if len(self._timestamps) < self.rate:
+                    self._timestamps.append(now)
+                    return waited
 
-            if diff < self.bucket_seconds:
-                # failure! sleep until the known-good expiry then loop again.
-                await asyncio.sleep(self.bucket_seconds - diff)
-                assert time.monotonic() - oldest >= self.bucket_seconds, (
-                    "Sleep was too fast?"
-                )
+                # need to wait until the oldest expires
+                oldest = self._timestamps[0]
+                sleep_for = max(0.0, self.bucket_seconds - (now - oldest))
 
-            # add this new event to the time-of-submission entries
-            self.q.put_nowait(time.monotonic())
-            return True  # signals we had to wait for time to elapse
-
-        # Not currently full, so add this event to time-of-submission entries
-        # and continue immediately
-        self.q.put_nowait(time.monotonic())
-        return False  # means we didn't have to wait
+            # sleep outside the lock
+            if sleep_for > 0:
+                waited = True
+                await asyncio.sleep(sleep_for)
+            else:
+                # just loop to re-check
+                await asyncio.sleep(0)
