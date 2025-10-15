@@ -4,9 +4,10 @@ import os
 import pathlib
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
-import arrow  # type: ignore
 from loguru import logger
 
 
@@ -37,8 +38,11 @@ class FetchCache:
     def __post_init__(self):
         os.makedirs(self.cacheDir, exist_ok=True)
 
+    async def get(self):
+        """If file already retrieved today, return cached value"""
         # refresh a minimum of once per day
-        fullFilename = self.filename + f"-{arrow.now().to('US/Eastern').date()}"
+        eastern_today = datetime.now(ZoneInfo("US/Eastern")).date()
+        fullFilename = self.filename + f"-{eastern_today}"
         if self.refreshMinutes is not None:
             # if refresh is requested, add a per-refreshMinutes bucket to
             # the filename for aggregating lookups
@@ -47,8 +51,6 @@ class FetchCache:
         self.filepath = self.cacheDir / fullFilename
         logger.trace(f"Using cache path: {self.filepath} {self}")
 
-    async def get(self):
-        """If file already retrieved today, return cached value"""
         if os.path.isfile(self.filepath):
             logger.opt(depth=1).info(
                 f"Returning previously cached path for {self.filename} at {self.filepath}"
